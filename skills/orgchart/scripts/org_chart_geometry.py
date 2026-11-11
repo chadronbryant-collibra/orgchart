@@ -303,8 +303,8 @@ def recommend(data: dict[str, Any]) -> dict[str, Any]:
         preferred = "matrix_relationships"
         rationale = "The input contains explicit non-hierarchical relationships."
     elif len(roots) == 1 and direct_reports > 8:
-        preferred = "enterprise_overview"
-        rationale = "A wide leadership span is clearer as an overview with drilldowns."
+        preferred = "compact_hierarchy"
+        rationale = "A wide team stays clearest as a simple tree; extra branches continue on their own pages with reporting lines kept."
     elif len(people) >= 35:
         preferred = "enterprise_overview"
         rationale = "The roster is too large for a single readable chart."

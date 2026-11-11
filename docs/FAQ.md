@@ -31,7 +31,7 @@ settings. See [privacy](../skills/orgchart/references/privacy.md).
 ## How big can a chart be?
 
 Up to 200 people or positions, 30 pages and 8 matrix links. Split a bigger org
-into several charts, or use Overview + team pages. Claude won't quietly leave
+into several charts, or let Simple tree continue branches on extra pages. Claude won't quietly leave
 people out.
 
 ## Can I show matrix or dotted lines?

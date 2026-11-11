@@ -27,3 +27,11 @@ standalone skill.
 
 - Prevented duplicate names for repeated function panels on larger charts.
 - Packed sibling branches onto fewer compact hierarchy pages.
+
+### Known limits
+
+- Overview + team pages is in beta: its team pages list people without
+  reporting lines. Use Simple tree when reporting lines matter.
+- Leadership team and Departments and teams group by level or function and do
+  not draw reporting lines.
+

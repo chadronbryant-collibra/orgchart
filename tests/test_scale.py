@@ -64,7 +64,7 @@ class ScaleTests(unittest.TestCase):
                 self.assertTrue(any({person["id"], person["manager_id"]} <= nodes for nodes in page_nodes), person["id"])
 
     def test_wide_recommendation(self):
-        self.assertIn(geometry.recommend(roster('wide'))['recommended_mode'], ('enterprise_overview', 'leadership_bands'))
+        self.assertIn(geometry.recommend(roster('wide'))['recommended_mode'], ('compact_hierarchy',))
 
 if __name__ == '__main__':
     unittest.main()
