@@ -6,7 +6,7 @@
 | Leadership team | `leadership_bands` | A shallow leadership view | Detailed contributor rosters need more space. |
 | Departments and teams | `functional_columns` | Compare functions with uneven branches | Cross-function relationships are less prominent. |
 | Matrix | `matrix_relationships` | Show a few secondary relationships | Links can make a dense page harder to read. |
-| Overview + team pages (beta) | `enterprise_overview` | Navigate a larger organization by function | Team pages list people without reporting lines yet; prefer Simple tree when reporting lines matter. |
+| Overview + team pages | `enterprise_overview` | Navigate a larger organization by function | Readers move between the overview and several team pages. |
 
 The planner recommends a starting point; verify legibility against the chosen
 template. The limits are 200 people or positions, 30 pages and 8 matrix links.
@@ -17,3 +17,11 @@ reporting lines for people on the same page. Departments and teams groups people
 by function without reporting lines. Matrix pages show dotted secondary links
 when a clear route is available; cross-page or obstructed links appear in a
 companion table. Simple tree keeps reporting lines on its branch pages.
+
+Overview + team pages starts with one summary card per function, then gives
+each function its own team pages. Team pages draw reporting lines like Simple
+tree, with each manager centered over their reports. A page holds at most 8
+cards across and 5 rows. When a team leader or a split branch reports to
+someone on another page, that manager appears as a grey context card at the
+top of the page, joined by a reporting line. A wide team repeats its leader as
+a context card on each continuation page.
