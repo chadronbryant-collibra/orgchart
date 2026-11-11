@@ -727,7 +727,7 @@ def _compact_pages(data: dict[str, Any], by_id: dict[str, dict[str, Any]], mode:
     overview_elements = []
     for index, (branch_id, name, count) in enumerate(summaries):
         row, column = divmod(index, columns)
-        element = _summary_card(branch_id, name, f"{count} positions · detail follows", _rect(content["x"] + column * (card_w + GAP), content["y"] + row * (card_h + GAP), card_w, card_h), page["id"])
+        element = _summary_card(branch_id, name, f"{count} {'position' if count == 1 else 'positions'} · detail follows", _rect(content["x"] + column * (card_w + GAP), content["y"] + row * (card_h + GAP), card_w, card_h), page["id"])
         page["elements"].append(element)
         overview_elements.append(element)
     for row in range(rows):
@@ -1034,33 +1034,84 @@ def _team_page_people(page_ids: list[str], by_id: dict[str, dict[str, Any]], ord
 
 def _enterprise_pages(data: dict[str, Any], by_id: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     groups = _function_groups(by_id)
+    roots = [person for person in by_id.values() if not person["manager_id"]]
+    root = roots[0] if len(roots) == 1 else None
+    if root:
+        groups = [(function, members) for function, members in groups
+                  if not (len(members) == 1 and members[0]["id"] == root["id"])]
     pages: list[dict[str, Any]] = []
-    overview_chunks = _chunk(groups, 12)
+    overview_chunks = _chunk(groups, 12) or [[]]
     for overview_index, group_chunk in enumerate(overview_chunks, start=1):
         page = _new_page(data, len(pages) + 1, "enterprise-overview", (data.get("title") or "Enterprise organization") + (" · continued" if overview_index > 1 else ""))
         content = page["content_bounds"]
-        columns = min(4, len(group_chunk))
-        rows = math.ceil(len(group_chunk) / columns)
+        columns = min(6 if root else 4, len(group_chunk)) or 1
+        rows = math.ceil(len(group_chunk) / columns) or 1
         card_w = (content["w"] - GAP * (columns - 1)) / columns
-        card_h = min(1.06, (content["h"] - GAP * (rows - 1)) / rows)
+        summary_top = content["y"]
+        if root:
+            root_h = 0.7
+            root_w = min(2.5, content["w"])
+            root_card = _card(root, _rect(content["x"] + (content["w"] - root_w) / 2, content["y"], root_w, root_h), page["id"])
+            page["elements"].append(root_card)
+            summary_top += root_h + 0.35
+        card_h = min(1.06, (content["y"] + content["h"] - summary_top - GAP * (rows - 1)) / rows)
         row_elements: dict[int, list[dict[str, Any]]] = defaultdict(list)
         for index, (function, members) in enumerate(group_chunk):
             row, column = divmod(index, columns)
             filled = sum(1 for member in members if member.get("kind", "person") != "open_role")
             open_roles = len(members) - filled
-            element = _summary_card(function, function, f"{len(members)} positions · {open_roles} open", _rect(content["x"] + column * (card_w + GAP), content["y"] + row * (card_h + GAP), card_w, card_h), page["id"])
+            element = _summary_card(function, function, f"{len(members)} {'position' if len(members) == 1 else 'positions'} · {open_roles} open", _rect(content["x"] + column * (card_w + GAP), summary_top + row * (card_h + GAP), card_w, card_h), page["id"])
             page["elements"].append(element)
             row_elements[row].append(element)
         for row, elements in row_elements.items():
             _add_row_alignment(page, elements, f"enterprise-overview-{row}")
+        if root:
+            candidates = []
+            for (function, members), element in zip(group_chunk, page["elements"][1:]):
+                member_ids = {member["id"] for member in members}
+                heads = [member for member in members if member["manager_id"] not in member_ids]
+                if any(head["manager_id"] == root["id"] for head in heads):
+                    candidates.append(_direct_connector(root_card, element, page["id"]))
+            for connector in candidates:
+                if _connector_hits_non_endpoint_card(connector, page["elements"]):
+                    # Try the gaps between columns for a wrapped-row route.
+                    start = _site_point(root_card, "bottom")
+                    target = next(e for e in page["elements"] if e["stable_name"] == connector["to"])
+                    end = _site_point(target, "top")
+                    upper_y = _number((start["y"] + summary_top) / 2)
+                    lower_y = _number(end["y"] - GAP / 2)
+                    for column in range(columns - 1):
+                        gap_x = _number(content["x"] + (column + 1) * card_w + (column + 0.5) * GAP)
+                        points = [(start["x"], start["y"]), (start["x"], upper_y),
+                                  (gap_x, upper_y), (gap_x, lower_y),
+                                  (end["x"], lower_y), (end["x"], end["y"])]
+                        connector["segments"] = [
+                            {"x1": a[0], "y1": a[1], "x2": b[0], "y2": b[1]}
+                            for a, b in zip(points, points[1:])
+                        ]
+                        if not _connector_hits_non_endpoint_card(connector, page["elements"]):
+                            break
+                if not (_connector_hits_non_endpoint_card(connector, page["elements"]) or
+                        _google_straight_connector_hits_non_endpoint_card(connector, page["elements"])):
+                    page["connectors"].append(connector)
         page["split_reason"] = "Enterprise mode always separates summary from team pages."
         pages.append(page)
     order = _preorder(by_id)
     for function, members in groups:
         team_pages = _pack_team_pages(members, by_id, order)
+        placement = {person_id: index for index, ids in enumerate(team_pages) for person_id in ids}
         for part, page_ids in enumerate(team_pages, start=1):
             detail = _new_page(data, len(pages) + 1, f"enterprise-{function}", f"{function}{' · continued' if part > 1 else ''}")
             _layout_levels(data, detail, _team_page_people(page_ids, by_id, order))
+            for card in detail["elements"]:
+                person_id = card.get("node_id")
+                if person_id and not card["data"].get("context") and any(
+                    member["manager_id"] == person_id and placement[member["id"]] > part - 1
+                    for member in members
+                ):
+                    later = min(placement[member["id"]] for member in members
+                                if member["manager_id"] == person_id and placement[member["id"]] > part - 1)
+                    card["data"]["continuation_hint"] = f"Team continues on page {len(pages) - part + 1 + later + 1}"
             detail["split_reason"] = (
                 f"Team pages allow {TEAM_PAGE_UNITS} cards across and {TEAM_PAGE_ROWS} rows; "
                 "grey context cards show managers who appear on another page."

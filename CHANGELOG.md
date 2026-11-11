@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.1
+
+### Fixed
+
+- Show the top leader and reporting lines on the overview when there is one root.
+- Skip the team page for a function that holds only the top leader.
+- Use the singular word for one position.
+- Show when a manager's team continues on a later page.
+
 ## 1.1.0
 
 ### Changed

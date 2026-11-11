@@ -43,6 +43,7 @@ def card_text(card):
     if s == 'context': name += ' (context)'
     text = name + '\n' + d.get('title','')
     if s == 'other': text += '\n' + d.get('statusLabel','')
+    if d.get('continuation_hint'): text += '\n' + d['continuation_hint']
     return text
 
 def compile_requests(geometry, theme, layout_id=None, existing=None, chunk=400, connector_category="auto"):
