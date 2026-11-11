@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.1
+
+### Fixed
+
+- Overview cards say "1 position" instead of "1 positions".
+- Overview cards sit in the middle of the slide instead of crowding the top.
+
 ## 1.1.0
 
 ### Changed
