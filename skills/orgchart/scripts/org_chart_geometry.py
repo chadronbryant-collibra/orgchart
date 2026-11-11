@@ -434,6 +434,15 @@ def _card(person: dict[str, Any], box: dict[str, float], page_id: str, role: str
     }
 
 
+def _count_label(count: int, singular: str, plural: str) -> str:
+    return f"{count} {singular if count == 1 else plural}"
+
+
+def _centered_grid_top(content: dict[str, float], rows: int, card_h: float) -> float:
+    grid_h = rows * card_h + GAP * (rows - 1)
+    return content["y"] + max(0.0, (content["h"] - grid_h) / 2)
+
+
 def _summary_card(identity: str, title: str, subtitle: str, box: dict[str, float], page_id: str) -> dict[str, Any]:
     return {
         "stable_name": stable_name("summary", identity, page_id),
@@ -724,10 +733,11 @@ def _compact_pages(data: dict[str, Any], by_id: dict[str, dict[str, Any]], mode:
     rows = math.ceil(len(summaries) / columns)
     card_w = (content["w"] - GAP * (columns - 1)) / columns
     card_h = min(1.05, (content["h"] - GAP * (rows - 1)) / max(rows, 1))
+    top = _centered_grid_top(content, rows, card_h)
     overview_elements = []
     for index, (branch_id, name, count) in enumerate(summaries):
         row, column = divmod(index, columns)
-        element = _summary_card(branch_id, name, f"{count} positions · detail follows", _rect(content["x"] + column * (card_w + GAP), content["y"] + row * (card_h + GAP), card_w, card_h), page["id"])
+        element = _summary_card(branch_id, name, f"{_count_label(count, 'position', 'positions')} · detail follows", _rect(content["x"] + column * (card_w + GAP), top + row * (card_h + GAP), card_w, card_h), page["id"])
         page["elements"].append(element)
         overview_elements.append(element)
     for row in range(rows):
@@ -1043,12 +1053,13 @@ def _enterprise_pages(data: dict[str, Any], by_id: dict[str, dict[str, Any]]) ->
         rows = math.ceil(len(group_chunk) / columns)
         card_w = (content["w"] - GAP * (columns - 1)) / columns
         card_h = min(1.06, (content["h"] - GAP * (rows - 1)) / rows)
+        top = _centered_grid_top(content, rows, card_h)
         row_elements: dict[int, list[dict[str, Any]]] = defaultdict(list)
         for index, (function, members) in enumerate(group_chunk):
             row, column = divmod(index, columns)
             filled = sum(1 for member in members if member.get("kind", "person") != "open_role")
             open_roles = len(members) - filled
-            element = _summary_card(function, function, f"{len(members)} positions · {open_roles} open", _rect(content["x"] + column * (card_w + GAP), content["y"] + row * (card_h + GAP), card_w, card_h), page["id"])
+            element = _summary_card(function, function, f"{_count_label(len(members), 'position', 'positions')} · {open_roles} open", _rect(content["x"] + column * (card_w + GAP), top + row * (card_h + GAP), card_w, card_h), page["id"])
             page["elements"].append(element)
             row_elements[row].append(element)
         for row, elements in row_elements.items():
