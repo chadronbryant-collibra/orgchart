@@ -2,7 +2,7 @@
 name: orgchart
 description: "Build or update an editable Google Slides org chart from a roster, your Workday reporting line, a Google Sheet or a CSV. Use for org charts, team charts, reporting lines, reorg or headcount planning views."
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
 ---
 # Org chart
 
@@ -37,6 +37,9 @@ Commands: `/orgchart` starts a chart; `/orgchart templates` lists choices;
 
 Many users are not technical. Lead with the outcome, use plain words, and say
 what you have not checked. Do not paste commands unless they ask.
+The receipt file is for your own checks: don't repeat its field names or
+values (such as `account_plane` or source verification) to the user. If the
+Google account wasn't checked, just say so in plain words.
 
 ## Local preview
 

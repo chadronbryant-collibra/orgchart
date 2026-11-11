@@ -1,9 +1,17 @@
 {
   "name": "orgchart",
-  "version": "1.0.0",
-  "description": "Build and update editable Google Slides org charts from authorized rosters.",
+  "version": "1.0.1",
+  "description": "Make an editable Google Slides org chart from your team list, a Sheet, a CSV or your Workday reporting line, in Collibra's look.",
   "author": {
     "name": "Chadron Bryant"
   },
-  "repository": "https://github.com/chadronbryant-collibra/orgchart"
+  "repository": "https://github.com/chadronbryant-collibra/orgchart",
+  "homepage": "https://github.com/chadronbryant-collibra/orgchart",
+  "keywords": [
+    "org chart",
+    "google slides",
+    "people",
+    "reorg",
+    "headcount"
+  ]
 }

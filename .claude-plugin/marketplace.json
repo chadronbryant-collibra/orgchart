@@ -7,8 +7,8 @@
     {
       "name": "orgchart",
       "source": "./",
-      "description": "Build and update editable Google Slides org charts from authorized rosters.",
-      "version": "1.0.0"
+      "description": "Make an editable Google Slides org chart from your team list, a Sheet, a CSV or your Workday reporting line, in Collibra's look.",
+      "version": "1.0.1"
     }
   ]
 }
