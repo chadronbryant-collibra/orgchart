@@ -38,6 +38,8 @@ FLAT_KNOWN = {
     "manager_node_id",
     "node_type",
     "status",
+    "statusLabel",
+    "status_label",
     "worker_type",
     "function",
     "location",
@@ -368,7 +370,8 @@ def _normalize_flat(
             "manager_id": _text(row.get("manager_node_id")) or None,
             "function": _text(row.get("function")) or "Unassigned",
             "kind": _kind(row.get("node_type"), row.get("status"), row.get("worker_type"), False),
-            "status": _text(row.get("status")).casefold() or "unknown",
+            "status": _text(row.get("status")).casefold() or "filled",
+            "statusLabel": _text(row.get("statusLabel") or row.get("status_label")),
             "worker_type": _text(row.get("worker_type")).casefold() or "unknown",
             "details": details,
             "markers": markers,
@@ -473,7 +476,7 @@ def _normalize_canonical(
     for position_id, position in position_by_id.items():
         person_id = _text(position.get("personId"))
         person = person_by_id.get(person_id) if person_id else None
-        status = _text(position.get("status")) or "unknown"
+        status = _text(position.get("status")) or "filled"
         worker_type = _text(position.get("workerType")) or "unknown"
         markers = _list_value(position.get("markers"), f"position {position_id} markers")
         marker_sensitive.update(_check_sensitive_markers(markers, allowed))
@@ -508,6 +511,7 @@ def _normalize_canonical(
                 "function": _text(position.get("function")) or "Unassigned",
                 "kind": _kind(None, status, worker_type, bool(person)),
                 "status": status.casefold(),
+                "statusLabel": _text(position.get("statusLabel")),
                 "worker_type": worker_type.casefold(),
                 "details": details,
                 "markers": markers,
@@ -519,7 +523,7 @@ def _normalize_canonical(
         position_keys
         - {
             "positionId", "personId", "title", "function", "location", "workerType",
-            "status", "level", "tenureYears", "compaRatio", "markers", "notes",
+            "status", "statusLabel", "level", "tenureYears", "compaRatio", "markers", "notes",
             "sourceAsOf", "sortOrder",
         }
     )
@@ -574,6 +578,17 @@ def normalize_source(
     else:
         raise NormalizationError(f"Unsupported source_kind: {source_kind!r}")
 
+    if len(people) > 200:
+        raise NormalizationError("This chart supports up to 200 people or positions. Split the roster into smaller charts.")
+    if len(relationships) > 8:
+        raise NormalizationError("This chart supports up to 8 matrix links. Use a separate relationship list for the rest.")
+    for person in people:
+        status = person["status"]
+        if status not in {"filled", "open", "planned", "resigned", "other"}:
+            raise NormalizationError(f"Unsupported status {status!r}. Choose filled, open, planned, resigned, or other.")
+        if status == "other" and not person.get("statusLabel"):
+            raise NormalizationError("The other status needs a statusLabel describing it.")
+        person["headcount_impact"] = {"filled": 1, "open": 0, "planned": 0, "resigned": -1, "other": 0}[status]
     roots, component_count = _validate_graph(people, relationships, allow_disconnected)
     people = _stable_sort_people(people)
     relationships = sorted(

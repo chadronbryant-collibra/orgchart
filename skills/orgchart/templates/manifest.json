@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "folder_url": "https://drive.google.com/drive/folders/1rhaPxUM8uC_8TzqW8hUZQc_jiNFZ_saG",
+  "templates": [
+    {
+      "id": "collibra-2026",
+      "name": "Collibra 2026 (org chart copy)",
+      "kind": "google-slides",
+      "file_id": "18wBn8of5jSJWRcnwoNzGqxUwQvP9211HG2aPUsY-prc",
+      "home": "People Operations Team shared drive / Skills / Org Chart Creator / Templates",
+      "upstream_file_id": "1Lo33hhkPpoxmZzyU7qD5t0q6klj13sKtJdpv43BSa2s",
+      "upstream_description": "Brand master maintained by the brand team",
+      "audience": "Collibra employees",
+      "layouts": [
+        "compact_hierarchy",
+        "leadership_bands",
+        "functional_columns",
+        "matrix_relationships",
+        "enterprise_overview"
+      ],
+      "last_checked": "2026-11-11"
+    },
+    {
+      "id": "neutral",
+      "name": "Neutral blank canvas",
+      "kind": "built-in",
+      "layouts": [
+        "compact_hierarchy",
+        "leadership_bands",
+        "functional_columns",
+        "matrix_relationships",
+        "enterprise_overview"
+      ]
+    },
+    {
+      "id": "simple-team",
+      "name": "Simple Team",
+      "kind": "roster-starter",
+      "path": "examples/starters/simple-team.json",
+      "layouts": [
+        "compact_hierarchy",
+        "leadership_bands",
+        "functional_columns",
+        "matrix_relationships",
+        "enterprise_overview"
+      ]
+    },
+    {
+      "id": "functional-org",
+      "name": "Functional Org",
+      "kind": "roster-starter",
+      "path": "examples/starters/functional-org.json",
+      "layouts": [
+        "compact_hierarchy",
+        "leadership_bands",
+        "functional_columns",
+        "matrix_relationships",
+        "enterprise_overview"
+      ]
+    },
+    {
+      "id": "future-state-plan",
+      "name": "Future State Plan",
+      "kind": "roster-starter",
+      "path": "examples/starters/future-state-plan.json",
+      "layouts": [
+        "compact_hierarchy",
+        "leadership_bands",
+        "functional_columns",
+        "matrix_relationships",
+        "enterprise_overview"
+      ]
+    }
+  ]
+}

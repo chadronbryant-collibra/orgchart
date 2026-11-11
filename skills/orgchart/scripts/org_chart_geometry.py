@@ -206,6 +206,10 @@ def _validate_input(data: dict[str, Any]) -> dict[str, dict[str, Any]]:
     people = data.get("people")
     if not isinstance(people, list) or not people:
         raise GeometryError("Input must contain a non-empty 'people' array.")
+    if len(people) > 200:
+        raise GeometryError("This chart supports up to 200 people or positions. Split the roster into smaller charts.")
+    if len(data.get("relationships") or []) > 8:
+        raise GeometryError("This chart supports up to 8 matrix links. Use a separate relationship list for the rest.")
     by_id: dict[str, dict[str, Any]] = {}
     for index, raw in enumerate(people):
         if not isinstance(raw, dict):
@@ -258,7 +262,7 @@ def _ordered_people(by_id: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     return sorted(
         by_id.values(),
         key=lambda person: (
-            person.get("order", 10_000),
+            person.get("order") if person.get("order") is not None else 10_000,
             person.get("function", "").casefold(),
             person.get("title", "").casefold(),
             person.get("name", "").casefold(),
@@ -710,7 +714,7 @@ def _leadership_pages(data: dict[str, Any], by_id: dict[str, dict[str, Any]]) ->
         _ordered_people(by_id),
         key=lambda person: (
             depth[person["id"]],
-            person.get("order", 10_000),
+            person.get("order") if person.get("order") is not None else 10_000,
             person.get("function", "").casefold(),
             person.get("title", "").casefold(),
             person["id"],
@@ -915,6 +919,8 @@ def layout(data: dict[str, Any], mode_override: str | None = None) -> dict[str, 
     else:
         pages = _enterprise_pages(data, by_id)
 
+    if len(pages) > 30:
+        raise GeometryError("This chart would need more than 30 pages. Split the roster into smaller charts.")
     result = {
         "schema": "collibra-org-chart-geometry/v1",
         "generator_version": VERSION,
@@ -980,6 +986,8 @@ def validate_layout(result: dict[str, Any]) -> dict[str, Any]:
     pages = result.get("pages")
     if not isinstance(pages, list) or not pages:
         return {"valid": False, "errors": ["Layout has no pages."], "warnings": []}
+    if len(pages) > 30:
+        errors.append("This chart supports up to 30 pages. Split it into smaller charts.")
     names: set[str] = set()
     google_object_ids: set[str] = set()
     for page in pages:

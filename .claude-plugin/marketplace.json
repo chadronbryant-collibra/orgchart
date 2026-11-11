@@ -1,0 +1,14 @@
+{
+  "name": "orgchart",
+  "owner": {
+    "name": "Chadron Bryant"
+  },
+  "plugins": [
+    {
+      "name": "orgchart",
+      "source": "./",
+      "description": "Build and update editable Google Slides org charts from authorized rosters.",
+      "version": "1.0.0"
+    }
+  ]
+}

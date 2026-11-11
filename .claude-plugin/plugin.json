@@ -1,0 +1,9 @@
+{
+  "name": "orgchart",
+  "version": "1.0.0",
+  "description": "Build and update editable Google Slides org charts from authorized rosters.",
+  "author": {
+    "name": "Chadron Bryant"
+  },
+  "repository": "https://github.com/chadronbryant-collibra/orgchart"
+}

@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "version",
+    "folder_url",
+    "templates"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "folder_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "templates": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "layouts"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "enum": [
+              "google-slides",
+              "built-in",
+              "roster-starter"
+            ]
+          },
+          "layouts": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "enum": [
+                "compact_hierarchy",
+                "leadership_bands",
+                "functional_columns",
+                "matrix_relationships",
+                "enterprise_overview"
+              ]
+            }
+          },
+          "file_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "home": {
+            "type": "string"
+          },
+          "upstream_file_id": {
+            "type": "string"
+          },
+          "upstream_description": {
+            "type": "string"
+          },
+          "audience": {
+            "type": "string"
+          },
+          "last_checked": {
+            "type": "string",
+            "format": "date"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "google-slides"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "file_id",
+                "home",
+                "audience",
+                "last_checked"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "roster-starter"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "path"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}

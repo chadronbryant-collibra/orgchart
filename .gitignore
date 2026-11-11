@@ -1,0 +1,4 @@
+dist/
+orgchart-work/
+__pycache__/
+*.pyc
