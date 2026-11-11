@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.0 (unreleased)
+
+### Changed
+
+- Overview + team pages is out of beta. Team pages now draw reporting lines,
+  place each person under their own manager and show an off-page manager as a
+  grey context card. Wide and deep teams continue on extra pages with that
+  context kept.
+
 ## 1.0.0
 
 Based on the earlier internal org chart engine v1.6.0, packaged as a
@@ -32,7 +41,5 @@ standalone skill.
 
 ### Known limits
 
-- Overview + team pages is in beta: its team pages list people without
-  reporting lines. Use Simple tree when reporting lines matter.
 - Departments and teams groups people by function without reporting lines.
 

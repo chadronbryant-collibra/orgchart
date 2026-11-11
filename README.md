@@ -8,7 +8,7 @@ anything is created.
 ## What you can do
 
 - Pick one of five layouts: Simple tree, Leadership team, Departments and
-  teams, Matrix, or Overview + team pages (beta). Claude recommends one and tells you
+  teams, Matrix, or Overview + team pages. Claude recommends one and tells you
   the tradeoff.
 - Show open, planned and resigned roles next to current people, with a legend.
 - Compare a scenario against today's org without losing the original.

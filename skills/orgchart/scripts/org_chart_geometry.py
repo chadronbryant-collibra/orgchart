@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-VERSION = "1.2.1"
+VERSION = "1.3.0"
 MODES = (
     "compact_hierarchy",
     "leadership_bands",
@@ -903,6 +903,135 @@ def _matrix_pages(data: dict[str, Any], by_id: dict[str, dict[str, Any]]) -> lis
     return pages
 
 
+TEAM_PAGE_UNITS = 8
+TEAM_PAGE_ROWS = 5
+
+
+def _preorder(by_id: dict[str, dict[str, Any]]) -> dict[str, int]:
+    """Return each person's position in a depth-first walk of the whole org."""
+    children = _children(by_id)
+    order: dict[str, int] = {}
+    stack = list(reversed(children[None]))
+    while stack:
+        person = stack.pop()
+        order[person["id"]] = len(order)
+        stack.extend(reversed(children[person["id"]]))
+    return order
+
+
+def _pack_team_pages(members: list[dict[str, Any]], by_id: dict[str, dict[str, Any]], order: dict[str, int]) -> list[list[str]]:
+    """Split one team into pages that keep its reporting lines drawable.
+
+    Each page holds at most ``TEAM_PAGE_UNITS`` leaf columns and
+    ``TEAM_PAGE_ROWS`` rows, counting one row for context cards. When a
+    branch does not fit, the manager stays on the page and the branch's
+    reports continue on a later page under a context card for that manager.
+    """
+    member_ids = {person["id"] for person in members}
+    kids: dict[str, list[str]] = defaultdict(list)
+    for person_id in sorted(member_ids, key=order.__getitem__):
+        manager_id = by_id[person_id]["manager_id"]
+        if manager_id in member_ids:
+            kids[manager_id].append(person_id)
+    roots = sorted(
+        (person_id for person_id in member_ids if by_id[person_id]["manager_id"] not in member_ids),
+        key=lambda person_id: (order.get(by_id[person_id]["manager_id"], -1), order[person_id]),
+    )
+    pages: list[dict[str, Any]] = []
+    queue: deque[list[str]] = deque([roots])
+    while queue:
+        forest = queue.popleft()
+        rows = TEAM_PAGE_ROWS - (1 if any(by_id[root]["manager_id"] for root in forest) else 0)
+        moved: dict[str, list[str]] = {}
+
+        def clear_below(node: str) -> None:
+            stack = [node]
+            while stack:
+                current = stack.pop()
+                moved.pop(current, None)
+                stack.extend(kids[current])
+
+        def measure(node: str, depth: int, is_root: bool) -> int:
+            reports = kids[node]
+            if not reports:
+                return 1
+            if depth >= rows - 1:
+                moved[node] = list(reports)
+                return 1
+            sizes = {child: measure(child, depth + 1, False) for child in reports}
+            total = sum(sizes.values())
+            # Move the widest branches first; their managers stay on this page.
+            for child in sorted(reports, key=lambda item: (-sizes[item], order[item])):
+                if total <= TEAM_PAGE_UNITS:
+                    break
+                if sizes[child] > 1:
+                    clear_below(child)
+                    moved[child] = list(kids[child])
+                    total -= sizes[child] - 1
+                    sizes[child] = 1
+            if total <= TEAM_PAGE_UNITS:
+                return total
+            if is_root:
+                moved[node] = list(reports[TEAM_PAGE_UNITS:])
+                return TEAM_PAGE_UNITS
+            clear_below(node)
+            moved[node] = list(reports)
+            return 1
+
+        sizes = [(root, measure(root, 0, True)) for root in forest]
+        chunks: list[tuple[list[str], int]] = []
+        for root, size in sizes:
+            if not chunks or chunks[-1][1] + size > TEAM_PAGE_UNITS:
+                chunks.append(([], 0))
+            chunks[-1][0].append(root)
+            chunks[-1] = (chunks[-1][0], chunks[-1][1] + size)
+        for chunk, size in chunks:
+            chunk_members: list[str] = []
+            stack = list(reversed(chunk))
+            while stack:
+                current = stack.pop()
+                chunk_members.append(current)
+                away = set(moved.get(current, ()))
+                stack.extend(reversed([child for child in kids[current] if child not in away]))
+            # Share a page with an earlier continuation when the columns fit and
+            # neither part manages the other's top people, so a context card
+            # never has to sit below its own reports.
+            chunk_set = set(chunk_members)
+            chunk_managers = {by_id[root]["manager_id"] for root in chunk}
+            for page in pages:
+                if (
+                    page["units"] + size <= TEAM_PAGE_UNITS
+                    and not chunk_managers & page["members"]
+                    and not page["managers"] & chunk_set
+                ):
+                    break
+            else:
+                page = {"ids": [], "members": set(), "managers": set(), "units": 0}
+                pages.append(page)
+            page["ids"].extend(chunk_members)
+            page["members"] |= chunk_set
+            page["managers"] |= chunk_managers
+            page["units"] += size
+            for current in chunk_members:
+                if moved.get(current):
+                    queue.append(moved[current])
+    return [page["ids"] for page in pages]
+
+
+def _team_page_people(page_ids: list[str], by_id: dict[str, dict[str, Any]], order: dict[str, int]) -> list[dict[str, Any]]:
+    """Return page people plus one context card per off-page manager."""
+    on_page = set(page_ids)
+    context_ids = sorted(
+        {by_id[person_id]["manager_id"] for person_id in page_ids if by_id[person_id]["manager_id"] and by_id[person_id]["manager_id"] not in on_page},
+        key=order.__getitem__,
+    )
+    context = [
+        {**deepcopy(by_id[manager_id]), "manager_id": None, "context": True, "order": -1}
+        for manager_id in context_ids
+    ]
+    return context + [by_id[person_id] for person_id in page_ids]
+
+
 def _enterprise_pages(data: dict[str, Any], by_id: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     groups = _function_groups(by_id)
     pages: list[dict[str, Any]] = []
@@ -924,13 +1053,18 @@ def _enterprise_pages(data: dict[str, Any], by_id: dict[str, dict[str, Any]]) ->
             row_elements[row].append(element)
         for row, elements in row_elements.items():
             _add_row_alignment(page, elements, f"enterprise-overview-{row}")
-        page["split_reason"] = "Enterprise mode always separates summary from roster drilldowns."
+        page["split_reason"] = "Enterprise mode always separates summary from team pages."
         pages.append(page)
+    order = _preorder(by_id)
     for function, members in groups:
-        for part, member_chunk in enumerate(_chunk(members, 20), start=1):
+        team_pages = _pack_team_pages(members, by_id, order)
+        for part, page_ids in enumerate(team_pages, start=1):
             detail = _new_page(data, len(pages) + 1, f"enterprise-{function}", f"{function}{' · continued' if part > 1 else ''}")
-            _layout_roster_grid(detail, member_chunk)
-            detail["split_reason"] = "Enterprise drilldowns allow at most 20 position cards per page."
+            _layout_levels(data, detail, _team_page_people(page_ids, by_id, order))
+            detail["split_reason"] = (
+                f"Team pages allow {TEAM_PAGE_UNITS} cards across and {TEAM_PAGE_ROWS} rows; "
+                "grey context cards show managers who appear on another page."
+            )
             pages.append(detail)
     return pages
 
@@ -969,7 +1103,7 @@ def layout(data: dict[str, Any], mode_override: str | None = None) -> dict[str, 
                 "leadership_bands": "14 leader cards",
                 "functional_columns": "5 function panels and 7 cards per panel",
                 "matrix_relationships": "24 positions and 8 visible cross-links",
-                "enterprise_overview": "always summary plus function drilldowns; 20 cards per drilldown",
+                "enterprise_overview": "summary plus team pages; 8 cards across and 5 rows per team page, with reporting lines",
             },
         },
         "relationships": [
