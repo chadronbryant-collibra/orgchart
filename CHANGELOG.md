@@ -9,6 +9,21 @@
   grey context card. Wide and deep teams continue on extra pages with that
   context kept.
 
+## 1.0.1
+
+### Added
+
+- An organization upload zip, `orgchart-plugin-v<version>.zip`, laid out the
+  way Claude's "Upload a plugin" expects: `.claude-plugin/plugin.json`,
+  `skills/orgchart/`, `README.md` and `CHANGELOG.md`. Owners can add it for
+  everyone, and anyone can upload it for themselves under Customize > Plugins.
+
+### Changed
+
+- Friendlier plugin description.
+- Claude keeps internal check details (like the receipt's account fields) out of
+  its replies and says what it didn't check in plain words.
+
 ## 1.0.0
 
 Based on the earlier internal org chart engine v1.6.0, packaged as a

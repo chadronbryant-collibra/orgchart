@@ -17,3 +17,4 @@ jobs:
       - run: python3 scripts/check_public.py
       - run: python3 skills/orgchart/scripts/templates.py validate
       - run: python3 scripts/build_desktop_zip.py
+      - run: python3 scripts/build_plugin_zip.py
