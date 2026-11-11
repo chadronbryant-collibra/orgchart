@@ -47,7 +47,8 @@ turned on for your organization.
 ## Check it worked
 
 Start a new chat or session and type `/orgchart help`. Claude should explain
-the flow and say which connectors it can see. In Claude Code you can also run
+the flow. When you start a chart with `/orgchart`, its first step checks which
+connectors it can see and walks you through any that are missing. In Claude Code you can also run
 `python3 skills/orgchart/scripts/templates.py list` to check the helpers.
 
 ## Update
