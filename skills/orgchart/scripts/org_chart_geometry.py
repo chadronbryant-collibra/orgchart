@@ -480,20 +480,33 @@ def _direct_connector(source: dict[str, Any], target: dict[str, Any], page_id: s
 
 
 def _matrix_connector(source: dict[str, Any], target: dict[str, Any], page: dict[str, Any], relation_index: int) -> dict[str, Any]:
-    source_box = source["box"]
-    target_box = target["box"]
     content = page["content_bounds"]
-    lane_x = _number(content["x"] + content["w"] - 0.05 - relation_index * 0.035)
-    start_site = "right"
-    end_site = "right"
-    start = _site_point(source, start_site)
-    end = _site_point(target, end_site)
-    if lane_x <= max(start["x"], end["x"]):
-        lane_x = _number(content["x"] + 0.04 + relation_index * 0.035)
-        start_site = "left"
-        end_site = "left"
-        start = _site_point(source, start_site)
-        end = _site_point(target, end_site)
+    candidates = []
+    if abs(source["box"]["y"] - target["box"]["y"]) < EPSILON:
+        source_left = source["box"]["x"] < target["box"]["x"]
+        candidates.append(("right" if source_left else "left", "left" if source_left else "right", None, "side-to-side"))
+    lane_y = min(source["box"]["y"], target["box"]["y"]) - 0.08 - relation_index * 0.035
+    if lane_y >= content["y"]:
+        candidates.append(("top", "top", lane_y, "top-lane"))
+    candidates.extend([(site, site, x, "external-lane") for site, x in (
+        ("right", content["x"] + content["w"] - 0.05 - relation_index * 0.035),
+        ("left", content["x"] + 0.04 + relation_index * 0.035))])
+    identity = f"{source['node_id']}-{target['node_id']}"
+    for start_site, end_site, lane, routing in candidates:
+        start, end = _site_point(source, start_site), _site_point(target, end_site)
+        if routing == "side-to-side":
+            segments = [{"x1": start["x"], "y1": start["y"], "x2": end["x"], "y2": end["y"]}]
+        elif routing == "top-lane":
+            segments = [{"x1": start["x"], "y1": start["y"], "x2": start["x"], "y2": lane}, {"x1": start["x"], "y1": lane, "x2": end["x"], "y2": lane}, {"x1": end["x"], "y1": lane, "x2": end["x"], "y2": end["y"]}]
+        else:
+            if (start_site == "right" and lane <= max(start["x"], end["x"])) or (start_site == "left" and lane >= min(start["x"], end["x"])):
+                continue
+            segments = [{"x1": start["x"], "y1": start["y"], "x2": lane, "y2": start["y"]}, {"x1": lane, "y1": start["y"], "x2": lane, "y2": end["y"]}, {"x1": lane, "y1": end["y"], "x2": end["x"], "y2": end["y"]}]
+        connector = {"from": source["stable_name"], "to": target["stable_name"], "segments": segments}
+        if not _connector_hits_non_endpoint_card(connector, page["elements"]):
+            break
+    else:
+        return None
     identity = f"{source['node_id']}-{target['node_id']}"
     return {
         "stable_name": stable_name("matrix-connector", identity, page["id"]),
@@ -508,15 +521,11 @@ def _matrix_connector(source: dict[str, Any], target: dict[str, Any], page: dict
         "google_slides_to_site_index": GOOGLE_SLIDES_SITE_INDEX[end_site],
         "google_slides_category": GOOGLE_SLIDES_PORTABLE_CATEGORY,
         "google_slides_reroute_policy": "disabled-unless-deck-canary",
-        "native_category": "BENT",
-        "pptx_native_category": "BENT",
+        "native_category": "STRAIGHT" if routing == "side-to-side" else "BENT",
+        "pptx_native_category": "STRAIGHT" if routing == "side-to-side" else "BENT",
         "reroute_safe": True,
-        "routing": "orthogonal-external-lane",
-        "segments": [
-            {"x1": start["x"], "y1": start["y"], "x2": lane_x, "y2": start["y"]},
-            {"x1": lane_x, "y1": start["y"], "x2": lane_x, "y2": end["y"]},
-            {"x1": lane_x, "y1": end["y"], "x2": end["x"], "y2": end["y"]},
-        ],
+        "routing": routing,
+        "segments": segments,
     }
 
 
@@ -536,7 +545,7 @@ def _add_row_alignment(page: dict[str, Any], elements: Iterable[dict[str, Any]],
         )
 
 
-def _layout_levels(data: dict[str, Any], page: dict[str, Any], people: list[dict[str, Any]]) -> None:
+def _layout_levels(data: dict[str, Any], page: dict[str, Any], people: list[dict[str, Any]], leadership: bool = False) -> None:
     subset = {person["id"]: person for person in people}
     depth: dict[str, int] = {}
     ordered = _ordered_people(subset)
@@ -562,8 +571,8 @@ def _layout_levels(data: dict[str, Any], page: dict[str, Any], people: list[dict
         levels[depth[person["id"]]].append(person)
     content = page["content_bounds"]
     level_count = len(levels)
-    vertical_gap = 0.3
-    card_h = min(0.72, max(0.48, (content["h"] - (level_count - 1) * vertical_gap) / max(level_count, 1)))
+    vertical_gap = min(0.3, content["h"] / (2 * max(level_count, 1))) if leadership else 0.3
+    card_h = min(0.72, (content["h"] - (level_count - 1) * vertical_gap) / max(level_count, 1)) if leadership else min(0.72, max(0.48, (content["h"] - (level_count - 1) * vertical_gap) / max(level_count, 1)))
     total_h = level_count * card_h + max(0, level_count - 1) * vertical_gap
     top = content["y"] + max(0.0, (content["h"] - total_h) / 2)
     # Allocate contiguous horizontal space to each subtree, then center each
@@ -777,30 +786,7 @@ def _leadership_pages(data: dict[str, Any], by_id: dict[str, dict[str, Any]]) ->
     pages: list[dict[str, Any]] = []
     for page_group in _chunk(people, 14):
         page = _new_page(data, len(pages) + 1, "leadership-bands", data.get("title") or "Leadership")
-        content = page["content_bounds"]
-        columns = min(5, len(page_group))
-        rows = math.ceil(len(page_group) / columns)
-        card_w = min(2.25, (content["w"] - GAP * (columns - 1)) / columns)
-        card_h = min(1.2, (content["h"] - 0.35 * (rows - 1)) / rows)
-        row_w = columns * card_w + GAP * (columns - 1)
-        row_elements: dict[int, list[dict[str, Any]]] = defaultdict(list)
-        created: dict[str, dict[str, Any]] = {}
-        for index, person in enumerate(page_group):
-            row, column = divmod(index, columns)
-            element = _card(person, _rect(content["x"] + (content["w"] - row_w) / 2 + column * (card_w + GAP), content["y"] + row * (card_h + 0.35), card_w, card_h), page["id"])
-            page["elements"].append(element)
-            row_elements[row].append(element)
-            created[person["id"]] = element
-        for row, elements in row_elements.items():
-            _add_row_alignment(page, elements, f"leadership-row-{row}")
-        for person in page_group:
-            if person["manager_id"] in created:
-                manager = created[person["manager_id"]]
-                child = created[person["id"]]
-                if manager["box"]["y"] + manager["box"]["h"] < child["box"]["y"] - EPSILON:
-                    connector = _direct_connector(manager, child, page["id"])
-                    if not _connector_hits_non_endpoint_card(connector, page["elements"]):
-                        page["connectors"].append(connector)
+        _layout_levels(data, page, page_group, leadership=True)
         if len(people) > 14:
             page["split_reason"] = "Leadership bands allow at most 14 readable cards per page."
         pages.append(page)
@@ -886,28 +872,21 @@ def _matrix_pages(data: dict[str, Any], by_id: dict[str, dict[str, Any]]) -> lis
             if element.get("node_id"):
                 element_lookup[element["node_id"]] = (page, element)
     drawn = 0
-    undrawn = 0
+    undrawn = []
     for relation in relationships:
         source_info = element_lookup.get(relation["from"])
         target_info = element_lookup.get(relation["to"])
         if not source_info or not target_info or source_info[0]["id"] != target_info[0]["id"] or drawn >= 8:
-            undrawn += 1
+            undrawn.append(relation)
             continue
         page, source = source_info
         connector = _matrix_connector(source, target_info[1], page, drawn)
-        if (
-            _connector_hits_non_endpoint_card(connector, page["elements"])
-            or _google_straight_connector_hits_non_endpoint_card(connector, page["elements"])
-        ):
-            undrawn += 1
+        if connector is None:
+            undrawn.append(relation)
             continue
         page["connectors"].append(connector)
         drawn += 1
-    if undrawn or len(relationships) > 8 or any(
-        element_lookup.get(relation["from"], ({"id": None},))[0]["id"]
-        != element_lookup.get(relation["to"], ({"id": None},))[0]["id"]
-        for relation in relationships
-    ):
+    if undrawn:
         table_page = _new_page(data, len(pages) + 1, "relationship-table", "Matrix relationships")
         content = table_page["content_bounds"]
         table_page["elements"].append(
@@ -916,7 +895,7 @@ def _matrix_pages(data: dict[str, Any], by_id: dict[str, dict[str, Any]]) -> lis
                 "type": "relationship_table",
                 "collision_class": "annotation",
                 "box": content,
-                "data": {"rows": relationships, "reason": "More than eight cross-links or cross-page links require a companion table."},
+                "data": {"rows": [{**relation, "from_display": "\n".join(filter(None, (by_id[relation["from"]].get("name") or relation["from"], by_id[relation["from"]].get("title")))), "to_display": "\n".join(filter(None, (by_id[relation["to"]].get("name") or relation["to"], by_id[relation["to"]].get("title"))))} for relation in undrawn], "reason": f"{len(undrawn)} link(s) cross pages or could not be drawn without crossing a card"},
             }
         )
         table_page["split_reason"] = "Relationship table prevents connector clutter and preserves every cross-link."
@@ -1170,7 +1149,8 @@ def validate_layout(result: dict[str, Any]) -> dict[str, Any]:
                     if any(_segment_intersects_rect(segment, card_box) for segment in normalized_segments):
                         errors.append(f"{page_id}/{name}: connector intersects non-endpoint card {card_name}")
                 if (
-                    connector.get("google_slides_category") == GOOGLE_SLIDES_PORTABLE_CATEGORY
+                    connector.get("type") != "matrix_relationship"
+                    and connector.get("google_slides_category") == GOOGLE_SLIDES_PORTABLE_CATEGORY
                     and _google_straight_connector_hits_non_endpoint_card(connector, elements)
                 ):
                     errors.append(f"{page_id}/{name}: Google Slides straight connector intersects a non-endpoint card")

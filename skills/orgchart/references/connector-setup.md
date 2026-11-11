@@ -23,7 +23,8 @@ in the meantime. A preview is not a created deck.
    Workday if you want them.
 7. Start a new chat so the tools load.
 
-Screenshots: see the People Solutions guide
+Collibra employees can find a guide with screenshots in the People Solutions
+Confluence space: "Use Google Docs, Sheets, Slides and Drive with Claude".
 
 ## Set up in Claude Code
 

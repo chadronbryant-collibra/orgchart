@@ -1,4 +1,5 @@
 import copy
+import csv
 import importlib.util
 import json
 import subprocess
@@ -82,6 +83,33 @@ class OrgchartTests(unittest.TestCase):
                         for other in groups:
                             if other != parent and abs(by_id[other]['box']['y']-by_id[parent]['box']['y']) < 0.001:
                                 self.assertLessEqual(abs(center(child)-center(by_id[parent])), abs(center(child)-center(by_id[other])) + 0.001, (label, child['node_id']))
+    def test_leadership_bands_and_matrix_routes(self):
+        with (SKILL/'examples/synthetic-roster.csv').open(newline='') as f: showcase=list(csv.DictReader(f))
+        for label, rows in [(n,self.rows(n)) for n in ('simple-team','functional-org','future-state-plan')] + [('showcase',showcase)]:
+            data=self.render(rows); parents={p['id']:p['manager_id'] for p in data['people']}
+            result=geometry.layout(data,'leadership_bands')
+            for page in result['pages']:
+                cards={e['node_id']:e for e in page['elements'] if e.get('node_id')}; centers=lambda e:e['box']['x']+e['box']['w']/2
+                edges={(c['from'],c['to']) for c in page['connectors'] if c['type']=='direct_report'}
+                for person,card in cards.items():
+                    parent=parents[person]
+                    if parent in cards: self.assertIn((cards[parent]['stable_name'],card['stable_name']),edges)
+                    for other in cards.values():
+                        if other is not card: self.assertFalse(geometry._intersects(card['box'],other['box']))
+                for parent,card in cards.items():
+                    children=[c for pid,c in cards.items() if parents[pid]==parent]
+                    if children: self.assertLessEqual(abs((min(map(centers,children))+max(map(centers,children)))/2-centers(card)),card['box']['w']/2+.001,label)
+            if len(result['pages'])==1:
+                first=min(c['box']['y'] for c in result['pages'][0]['elements'] if c.get('node_id'))
+                self.assertEqual({c['node_id'] for c in result['pages'][0]['elements'] if c.get('node_id') and c['box']['y']==first},{p['id'] for p in data['people'] if not p['manager_id']})
+        matrix=geometry.layout(self.render(showcase),'matrix_relationships')
+        self.assertEqual(len(matrix['pages']),1)
+        self.assertEqual(sum(c['type']=='matrix_relationship' for p in matrix['pages'] for c in p['connectors']),1)
+        rows=[{'node_id':str(i),'display_name':'Person '+str(i),'title':'Role','manager_node_id':'' if i==0 else '0','function':'F'+str(i)} for i in range(25)]
+        rows[0]['dotted_to_node_ids']='24'
+        matrix=geometry.layout(self.render(rows),'matrix_relationships')
+        table=next(e for p in matrix['pages'] for e in p['elements'] if e['type']=='relationship_table')
+        self.assertEqual(table['data']['reason'],'1 link(s) cross pages or could not be drawn without crossing a card')
     def test_geometry_limits(self):
         data=self.render(); data['people'] *= 34
         with self.assertRaisesRegex(geometry.GeometryError,'200'): geometry.recommend(data)

@@ -11,7 +11,9 @@
 The planner recommends a starting point; verify legibility against the chosen
 template. The limits are 200 people or positions, 30 pages and 8 matrix links.
 
-Leadership team and Departments and teams group people by level or function,
-so they do not draw reporting lines by design. Simple tree is the safest choice
-for multi-page charts: each branch page keeps its reporting lines. Tell the user
-which tradeoff applies before building.
+Leadership team places roots in the first band, direct reports in the next,
+and deeper reports in later bands. Sibling groups sit under their parent, with
+reporting lines for people on the same page. Departments and teams groups people
+by function without reporting lines. Matrix pages show dotted secondary links
+when a clear route is available; cross-page or obstructed links appear in a
+companion table. Simple tree keeps reporting lines on its branch pages.

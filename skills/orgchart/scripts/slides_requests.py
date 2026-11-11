@@ -13,11 +13,11 @@ import re
 import sys
 from pathlib import Path
 
-FIELDS = 'slides(objectId,pageElements(objectId,shape(shapeType,text.textElements.textRun.content),line(lineProperties(startConnection,endConnection)),elementGroup(children(objectId,shape(shapeType,text.textElements.textRun.content),line(lineProperties(startConnection,endConnection))))))'
+FIELDS = 'slides(objectId,pageElements(objectId,shape(shapeType,text.textElements.textRun.content),line(lineProperties(startConnection,endConnection)),table(rows,columns,tableRows(tableCells(text.textElements.textRun.content))),elementGroup(children(objectId,shape(shapeType,text.textElements.textRun.content),line(lineProperties(startConnection,endConnection))))))'
 VALID = re.compile(r'^[A-Za-z0-9_][A-Za-z0-9_:-]{4,49}$')
 THEMES = {
-    'collibra-2026': {'ink':'002B40','muted':'4B4B4B','filled':('FFFFFF','DFE6E8','SOLID'),'open':('FFFFFF','03755F','DASH'),'planned':('F0F2F3','03755F','DOT'),'resigned':('FCE6DF','B64B31','SOLID'),'other':('F0F2F3','4B4B4B','SOLID'),'context':('F0F2F3','4B4B4B','SOLID')},
-    'neutral': {'ink':'212121','muted':'757575','filled':('FFFFFF','E0E0E0','SOLID'),'open':('FFFFFF','757575','DASH'),'planned':('E0E0E0','757575','DOT'),'resigned':('FDECEA','B71C1C','SOLID'),'other':('E0E0E0','757575','SOLID'),'context':('E0E0E0','757575','SOLID')},
+    'collibra-2026': {'ink':'002B40','muted':'4B4B4B','matrix':'03755F','filled':('FFFFFF','DFE6E8','SOLID'),'open':('FFFFFF','03755F','DASH'),'planned':('F0F2F3','03755F','DOT'),'resigned':('FCE6DF','B64B31','SOLID'),'other':('F0F2F3','4B4B4B','SOLID'),'context':('F0F2F3','4B4B4B','SOLID')},
+    'neutral': {'ink':'212121','muted':'757575','matrix':'757575','filled':('FFFFFF','E0E0E0','SOLID'),'open':('FFFFFF','757575','DASH'),'planned':('E0E0E0','757575','DOT'),'resigned':('FDECEA','B71C1C','SOLID'),'other':('E0E0E0','757575','SOLID'),'context':('E0E0E0','757575','SOLID')},
 }
 
 def ident(value):
@@ -47,7 +47,7 @@ def card_text(card):
 
 def compile_requests(geometry, theme, layout_id=None, existing=None, chunk=400, connector_category="auto"):
     if chunk < 1: raise ValueError('--chunk must be positive')
-    palette=THEMES[theme]; requests=[]; used=set(); count={'pages':0,'cards':0,'connectors':0,'legend_items':0}
+    palette=THEMES[theme]; requests=[]; used=set(); count={'pages':0,'cards':0,'connectors':0,'tables':0,'legend_items':0}
     def reserve(obj):
         if obj in used: raise ValueError('Duplicate object ID: '+obj)
         used.add(obj); return obj
@@ -79,8 +79,21 @@ def compile_requests(geometry, theme, layout_id=None, existing=None, chunk=400, 
                 shape(pid,ident(e['stable_name']+'-heading'),{'x':box['x'],'y':box['y'],'w':box['w'],'h':0.36},label,'FFFFFF','FFFFFF',fontsize=11,shape_type='TEXT_BOX')
             elif e.get('type') == 'relationship_table':
                 rows=e.get('data', {}).get('rows', [])
-                label='\n'.join(str(row.get('from',''))+' -> '+str(row.get('to','')) + (': '+str(row['label']) if row.get('label') else '') for row in rows)
-                if label: shape(pid,ident(e['stable_name']),e['box'],label,'FFFFFF','FFFFFF',fontsize=11,shape_type='TEXT_BOX')
+                obj=reserve(ident(e['stable_name']))
+                box=dict(e['box']); box['h']=min(box['h'], 0.4*(len(rows)+1))
+                requests.append({'createTable':{'objectId':obj,'rows':len(rows)+1,'columns':3,'elementProperties':props(pid,box)}})
+                values=[['From','To','Relationship']]+[[row.get('from_display') or row.get('from',''), row.get('to_display') or row.get('to',''), row.get('label') or row.get('type') or 'Works with'] for row in rows]
+                for ri, row in enumerate(values):
+                    for ci, value in enumerate(row):
+                        loc={'rowIndex':ri,'columnIndex':ci}
+                        requests.append({'insertText':{'objectId':obj,'cellLocation':loc,'insertionIndex':0,'text':str(value)}})
+                        if ri:
+                            requests.append({'updateTextStyle':{'objectId':obj,'cellLocation':loc,'textRange':{'type':'ALL'},'style':{'foregroundColor':{'opaqueColor':color(palette['ink'])}},'fields':'foregroundColor'}})
+                requests.append({'updateTextStyle':{'objectId':obj,'cellLocation':{'rowIndex':0,'columnIndex':0},'textRange':{'type':'ALL'},'style':{'bold':True,'foregroundColor':{'opaqueColor':color(palette['ink'])}},'fields':'bold,foregroundColor'}})
+                for ci in (1,2):
+                    requests.append({'updateTextStyle':{'objectId':obj,'cellLocation':{'rowIndex':0,'columnIndex':ci},'textRange':{'type':'ALL'},'style':{'bold':True,'foregroundColor':{'opaqueColor':color(palette['ink'])}},'fields':'bold,foregroundColor'}})
+                requests.append({'updateTableCellProperties':{'objectId':obj,'tableRange':{'location':{'rowIndex':0,'columnIndex':0},'rowSpan':1,'columnSpan':3},'tableCellProperties':{'tableCellBackgroundFill':{'solidFill':{'color':color('F0F2F3')}}},'fields':'tableCellBackgroundFill'}})
+                count['tables']+=1
         lookup={e['stable_name']:card_id(e) for e in cards(page)}
         for e in cards(page):
             s=status(e)
@@ -95,9 +108,12 @@ def compile_requests(geometry, theme, layout_id=None, existing=None, chunk=400, 
             lid=reserve(line_id(line)); seg=line['segments']; x1,y1=seg[0]['x1'],seg[0]['y1']; x2,y2=seg[-1]['x2'],seg[-1]['y2']
             ep={'pageObjectId':pid,'size':{'width':{'magnitude':max(abs(x2-x1)*72,0.01),'unit':'PT'},'height':{'magnitude':max(abs(y2-y1)*72,0.01),'unit':'PT'}},'transform':{'scaleX':-1 if x2<x1 else 1,'scaleY':-1 if y2<y1 else 1,'translateX':x1*72,'translateY':y1*72,'unit':'PT'}}
             requests.append({'createLine':{'objectId':lid,'lineCategory':line.get('native_category','BENT') if connector_category == 'auto' else connector_category,'elementProperties':ep}})
-            lp={'startConnection':{'connectedObjectId':lookup[line['from']],'connectionSiteIndex':line['google_slides_from_site_index']},'endConnection':{'connectedObjectId':lookup[line['to']],'connectionSiteIndex':line['google_slides_to_site_index']},'lineFill':{'solidFill':{'color':color(palette['ink'] if theme == 'collibra-2026' else palette['muted'])}},'weight':{'magnitude':1,'unit':'PT'},'dashStyle':'DASH' if line.get('line_style')=='dotted' or line.get('type')=='dotted_line' else 'SOLID','startArrow':'NONE','endArrow':'NONE'}
+            lp={'startConnection':{'connectedObjectId':lookup[line['from']],'connectionSiteIndex':line['google_slides_from_site_index']},'endConnection':{'connectedObjectId':lookup[line['to']],'connectionSiteIndex':line['google_slides_to_site_index']},'lineFill':{'solidFill':{'color':color(palette['matrix'] if line.get('type') == 'matrix_relationship' else (palette['ink'] if theme == 'collibra-2026' else palette['muted']))}},'weight':{'magnitude':1,'unit':'PT'},'dashStyle':'DOT' if line.get('line_style')=='dotted' or line.get('type')=='dotted_line' else 'SOLID','startArrow':'NONE','endArrow':'NONE'}
             requests.append({'updateLineProperties':{'objectId':lid,'lineProperties':lp,'fields':','.join(lp)}})
             requests.append({'updatePageElementsZOrder':{'pageElementObjectIds':[lid],'operation':'SEND_TO_BACK'}}); count['connectors']+=1
+        if any(line.get('type') == 'matrix_relationship' for line in page.get('connectors', [])):
+            shape(pid,ident(page['id']+'-legend-matrix'),{'x':9.75,'y':7.02,'w':3.1,'h':0.27},'····  Dotted line: works with','FFFFFF','FFFFFF',fontsize=9,ink=palette['matrix'],shape_type='TEXT_BOX',title_style=True)
+            count['legend_items']+=1
         present={status(e) for e in cards(page) if e.get('type') != 'group_summary_card'}
         for i,s in enumerate(x for x in ('filled','open','planned','resigned','other','context') if x in present):
             fill,border,dash=palette[s]
@@ -125,6 +141,17 @@ def verify(geometry, readback):
             obj=card_id(card); shape=elements.get(obj,{}).get('shape',{}); texts=shape.get('text',{}).get('textElements',[])
             actual=''.join(t.get('textRun',{}).get('content','') for t in texts)
             results.append(('card',obj,shape.get('shapeType')=='ROUND_RECTANGLE' and actual.startswith(card_text(card).split('\n')[0])))
+        for table in (e for e in page.get('elements', []) if e.get('type') == 'relationship_table'):
+            obj=ident(table['stable_name']); actual=elements.get(obj,{}).get('table')
+            ok=actual is not None and actual.get('rows', 0) == len(table.get('data',{}).get('rows',[]))+1 and actual.get('columns', 0) == 3
+            if ok and 'tableRows' in actual:
+                expected=[['From','To','Relationship']]+[[r.get('from_display') or r.get('from',''),r.get('to_display') or r.get('to',''),r.get('label') or r.get('type') or 'Works with'] for r in table['data']['rows']]
+                for ri, row in enumerate(actual['tableRows']):
+                    for ci, cell in enumerate(row.get('tableCells',[])):
+                        if 'text' in cell:
+                            text=''.join(t.get('textRun',{}).get('content','') for t in cell['text'].get('textElements',[]))
+                            ok = ok and text.rstrip('\n') == str(expected[ri][ci])
+            results.append(('table',obj,ok))
         for line in page.get('connectors',[]):
             obj=line_id(line); element=elements.get(obj,{}); lp=element.get('line',{}).get('lineProperties',{})
             start={'connectedObjectId':lookup[line['from']],'connectionSiteIndex':line['google_slides_from_site_index']}; end={'connectedObjectId':lookup[line['to']],'connectionSiteIndex':line['google_slides_to_site_index']}
