@@ -159,7 +159,8 @@ class TeamPageTests(unittest.TestCase):
                         with self.subTest(roster=name, page=page['id'], context=card['node_id']):
                             self.assertTrue(any(c['from'] == card['stable_name'] for c in page['connectors']))
             with self.subTest(roster=name):
-                self.assertEqual(set(placed), set(by_id))
+                omitted = {p['id'] for p in data['people'] if p['manager_id'] is None and sum(q['function'] == p['function'] for q in data['people']) == 1} if sum(p['manager_id'] is None for p in data['people']) == 1 else set()
+                self.assertEqual(set(placed), set(by_id) - omitted)
                 self.assertTrue(all(len(pages) == 1 for pages in placed.values()))
 
     def test_wide_team_repeats_its_leader(self):
@@ -185,6 +186,59 @@ class TeamPageTests(unittest.TestCase):
         data_page = located['s00']
         context = {card['node_id'] for card in cards(data_page) if card['data']['context']}
         self.assertIn('d0', context)
+
+    def test_overview_root_summaries_and_singular(self):
+        data = {'title': 'Synthetic', 'people': [person('ceo', None, 'Leadership'),
+                person('head', 'ceo', 'Product'), person('other', 'ceo', 'Sales')]}
+        result = geometry.layout(data, 'enterprise_overview')
+        overview = result['pages'][0]
+        self.assertEqual([c['node_id'] for c in cards(overview)], ['ceo'])
+        summaries = [e for e in overview['elements'] if e['type'] == 'group_summary_card']
+        self.assertEqual(len(summaries), 2)
+        self.assertTrue(all(e['data']['title'].startswith('1 position ·') for e in summaries))
+        self.assertEqual(len(overview['connectors']), 2)
+        self.assertNotIn('Leadership', [p['title'] for p in team_pages(result)])
+        self.assertTrue(geometry.validate_layout(result)['valid'])
+
+    def test_five_function_overview_has_five_safe_connectors(self):
+        data = {'title': 'Synthetic', 'people': [person('ceo', None, 'Leadership')]}
+        for i in range(5):
+            data['people'].append(person(f'h{i}', 'ceo', f'Team {i}'))
+        for i in range(38):
+            data['people'].append(person(f'r{i}', 'h0', 'Team 0'))
+        result = geometry.layout(data, 'enterprise_overview')
+        overview = result['pages'][0]
+        self.assertEqual(len(data['people']), 44)
+        self.assertEqual(len(overview['connectors']), 5)
+        self.assertTrue(geometry.validate_layout(result)['valid'])
+
+    def test_wrapped_overview_keeps_safe_first_row_connectors(self):
+        data = {'title': 'Synthetic', 'people': [person('ceo', None, 'Leadership')]}
+        data['people'] += [person(f'h{i}', 'ceo', f'Team {i}') for i in range(8)]
+        result = geometry.layout(data, 'enterprise_overview')
+        overview = result['pages'][0]
+        first_row = {e['stable_name'] for e in overview['elements']
+                     if e['type'] == 'group_summary_card' and e['box']['y'] == min(
+                         x['box']['y'] for x in overview['elements'] if x['type'] == 'group_summary_card')}
+        self.assertEqual(len(first_row), 6)
+        self.assertTrue(first_row <= {c['to'] for c in overview['connectors']})
+        for connector in overview['connectors']:
+            self.assertFalse(geometry._connector_hits_non_endpoint_card(connector, overview['elements']))
+            self.assertFalse(geometry._google_straight_connector_hits_non_endpoint_card(connector, overview['elements']))
+        self.assertTrue(geometry.validate_layout(result)['valid'])
+
+    def test_multiple_roots_keep_function_pages(self):
+        data = {'title': 'Synthetic', 'people': [person('a', None, 'A'), person('b', None, 'B')]}
+        result = geometry.layout(data, 'enterprise_overview')
+        self.assertFalse(cards(result['pages'][0]))
+        self.assertEqual([page['title'] for page in team_pages(result)], ['A', 'B'])
+
+    def test_continuation_hint_is_rendered(self):
+        result = geometry.layout(wide60(), 'enterprise_overview')
+        first = team_pages(result)[0]
+        lead = next(c for c in cards(first) if c['node_id'] == 'lead')
+        self.assertEqual(lead['data']['continuation_hint'], f"Team continues on page {team_pages(result)[1]['index']}")
+        self.assertIn(lead['data']['continuation_hint'], slides_requests.card_text(lead))
 
     def test_slides_requests_render_context_cards_and_lines(self):
         result = geometry.layout(wide60(), 'enterprise_overview')

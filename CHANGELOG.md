@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.2
+
+### Fixed
+
+- Show the top leader and a reporting line to each function on the overview
+  when there is one top leader.
+- Skip the team page for a function that holds only the top leader.
+- Show when a manager's team continues on a later page.
+
 ## 1.1.1
 
 ### Fixed
