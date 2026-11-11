@@ -2,7 +2,20 @@
 
 ## 1.0.0
 
-Packaged the 1.6.0 chart engine as the standalone orgchart skill. Added a guided
-connector and preview flow, template catalog and synthetic starters, status and
-size limits, a text outline, Desktop and Code installation, public-content
-checks and regression tests. Local geometry is not proof of a created deck.
+Based on the earlier internal org chart engine v1.6.0, packaged as a
+standalone skill.
+
+### Added
+
+- A guided flow: connector check, text preview, layout choice, then an
+  editable Google Slides deck.
+- A template catalog with a neutral canvas, a Collibra template and synthetic
+  roster starters.
+- Open, planned and resigned statuses, with size limits and a text outline.
+- Install paths for Claude Code and Claude Desktop.
+- Public-content checks and regression tests.
+
+### Changed
+
+- Local geometry is a preview aid only. It is not proof that a deck was
+  created.

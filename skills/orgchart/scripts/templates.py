@@ -20,7 +20,7 @@ def validate(data, root=ROOT):
     if not isinstance(entries, list) or not entries:
         return errors + ['templates must be a nonempty list.']
     ids = set()
-    allowed = {'id','name','kind','layouts','file_id','home','upstream_file_id','upstream_description','audience','last_checked','path'}
+    allowed = {'id','name','kind','layouts','file_id','home','upstream_file_id','upstream_description','audience','last_checked','path','theme','layout_id'}
     for entry in entries:
         if not isinstance(entry, dict):
             errors.append('Each template must be an object.'); continue
@@ -37,10 +37,12 @@ def validate(data, root=ROOT):
         if kind not in {'google-slides','built-in','roster-starter'}:
             errors.append(f'{ident}: invalid kind.')
         if kind == 'google-slides':
-            for field in ('file_id','home','audience','last_checked'):
+            for field in ('file_id','home','audience','last_checked','theme','layout_id'):
                 if not isinstance(entry.get(field), str) or not entry.get(field): errors.append(f'{ident}: missing {field}.')
             try: datetime.date.fromisoformat(entry.get('last_checked', ''))
             except (ValueError, TypeError): errors.append(f'{ident}: invalid last_checked date.')
+        if kind in {'google-slides', 'built-in'} and entry.get('theme') not in {'collibra-2026', 'neutral'}:
+            errors.append(f'{ident}: invalid theme.')
         if kind == 'roster-starter':
             path = entry.get('path')
             if not isinstance(path, str) or not path.startswith('examples/starters/') or '..' in Path(path).parts or not (root / path).is_file():

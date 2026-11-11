@@ -18,7 +18,9 @@
         "matrix_relationships",
         "enterprise_overview"
       ],
-      "last_checked": "2026-11-11"
+      "last_checked": "2026-11-11",
+      "theme": "collibra-2026",
+      "layout_id": "g3efe399732d_0_346"
     },
     {
       "id": "neutral",
@@ -30,7 +32,8 @@
         "functional_columns",
         "matrix_relationships",
         "enterprise_overview"
-      ]
+      ],
+      "theme": "neutral"
     },
     {
       "id": "simple-team",

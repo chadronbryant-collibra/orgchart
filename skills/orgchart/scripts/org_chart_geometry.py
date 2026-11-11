@@ -358,7 +358,7 @@ def _reserved_zones(data: dict[str, Any], canvas: dict[str, float]) -> tuple[lis
     top = 0.92
     right = canvas["width"] - MARGIN
     bottom = canvas["height"] - 0.32
-    if options.get("include_legend") or data.get("legend_items"):
+    if options.get("include_legend", True) or data.get("legend_items"):
         legend_h = 0.66
         zones.append(
             {
@@ -422,6 +422,9 @@ def _card(person: dict[str, Any], box: dict[str, float], page_id: str, role: str
             "title": person["title"],
             "function": person["function"],
             "kind": person.get("kind", "person"),
+            "status": person.get("status", "filled"),
+            "statusLabel": person.get("statusLabel", ""),
+            "context": person.get("context", False),
             "details": person.get("details", []),
             "markers": person.get("markers", []),
         },

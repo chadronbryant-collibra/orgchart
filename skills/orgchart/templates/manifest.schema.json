@@ -78,6 +78,16 @@
           },
           "path": {
             "type": "string"
+          },
+          "theme": {
+            "enum": [
+              "collibra-2026",
+              "neutral"
+            ]
+          },
+          "layout_id": {
+            "type": "string",
+            "minLength": 1
           }
         },
         "additionalProperties": false,
@@ -95,7 +105,9 @@
                 "file_id",
                 "home",
                 "audience",
-                "last_checked"
+                "last_checked",
+                "theme",
+                "layout_id"
               ]
             }
           },
