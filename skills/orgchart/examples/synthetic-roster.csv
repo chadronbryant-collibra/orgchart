@@ -1,0 +1,9 @@
+node_id,display_name,title,manager_node_id,node_type,status,worker_type,function,location,metadata,dotted_to_node_ids,markers,sort_order,source_as_of,source_ref
+demo-001,Person Alpha,Chief Demonstration Officer,,person,filled,employee,Leadership,Demo North,Level D,,demo-fixture,1,2099-06-01,synthetic-row-001
+demo-010,Person Beta,VP Product Examples,demo-001,person,filled,employee,Product,Remote Demo,Level C,demo-020,,10,2099-06-01,synthetic-row-010
+demo-011,Person Gamma,Director Product Design,demo-010,person,filled,employee,Product,Demo West,Level B,,,11,2099-06-01,synthetic-row-011
+demo-012,Open,Product Operations Lead,demo-010,open_role,open,unknown,Product,Remote Demo,,,,12,2099-06-01,synthetic-row-012
+demo-020,Person Delta,VP Customer Examples,demo-001,person,filled,employee,Customer,Demo East,Level C,,,20,2099-06-01,synthetic-row-020
+demo-021,Person Epsilon,Director Customer Programs,demo-020,person,filled,employee,Customer,Remote Demo,Level B,,,21,2099-06-01,synthetic-row-021
+demo-022,Person Zeta,Customer Advisor,demo-020,contractor,filled,contractor,Customer,Remote Demo,External,,,22,2099-06-01,synthetic-row-022
+demo-030,Person Eta,VP Business Examples,demo-001,person,filled,employee,Business,Demo South,Level C,,,30,2099-06-01,synthetic-row-030

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Collibra org charts"
+  short_description: "Build editable current and planned org charts"
+  default_prompt: "Use $collibra-design-suite:collibra-org-charts to create or revise an editable org chart from an authorized roster."
+policy:
+  allow_implicit_invocation: true

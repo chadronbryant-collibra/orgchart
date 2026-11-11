@@ -1,0 +1,1 @@
+Seeded from chadronbryant-collibra/collibra-plugins@6e2588af69fa1478051f637cb0329efd16e5391b plugins/collibra-workspace/skills/collibra-org-charts (v1.6.0)

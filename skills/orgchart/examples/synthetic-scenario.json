@@ -1,0 +1,35 @@
+{
+  "schema": "org-chart-scenario/v1",
+  "mode": "mixed",
+  "baseline": {
+    "organization": {
+      "name": "Northstar Example Group",
+      "scope": "Example Operations",
+      "asOfDate": "2099-06-01",
+      "sourceLabel": "Synthetic example"
+    },
+    "people": [
+      {"personId": "person-avery", "displayName": "Avery Example"},
+      {"personId": "person-jordan", "displayName": "Jordan Example"}
+    ],
+    "positions": [
+      {"positionId": "position-vp", "personId": "person-avery", "title": "VP, Example Operations", "function": "Operations", "status": "filled"},
+      {"positionId": "position-manager", "personId": "person-jordan", "title": "Manager, Example Delivery", "function": "Delivery", "status": "filled"}
+    ],
+    "relationships": [
+      {"fromPositionId": "position-vp", "toPositionId": "position-manager", "type": "direct"}
+    ]
+  },
+  "changes": [
+    {
+      "op": "add_position",
+      "position": {"positionId": "plan-analytics-director", "personId": null, "title": "Director, Example Analytics", "function": "Analytics", "status": "planned"},
+      "managerPositionId": "position-vp"
+    },
+    {
+      "op": "annotate_position",
+      "positionId": "plan-analytics-director",
+      "annotation": "Planning assumption: proposed for the next operating cycle"
+    }
+  ]
+}
