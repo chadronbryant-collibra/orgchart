@@ -1,6 +1,6 @@
 {
   "name": "orgchart",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Make an editable Google Slides org chart from your team list, a Sheet, a CSV or your Workday reporting line, in Collibra's look.",
   "author": {
     "name": "Chadron Bryant"
