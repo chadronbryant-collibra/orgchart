@@ -20,12 +20,17 @@ PATTERNS = {
     'token': re.compile(r'\b(?:gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|AKIA[A-Z0-9]{16})\b'),
 }
 ALLOWED = {'Person Alpha','Person Beta','Person Gamma','Person Delta','Person Epsilon','Person Zeta','Person Eta','Open','Planned','Unknown','Chadron Bryant'}
+GENERATED_NAME = re.compile(r'Person (?:Alpha|Beta|Gamma|Delta|Epsilon|Zeta|Eta) [0-9]+')
+
+def allowed_name(value):
+    return value in ALLOWED or GENERATED_NAME.fullmatch(value) is not None
+
 NAME_FIELDS = {'display_name','displayName','preferredName'}
 
 def names(value):
     if isinstance(value, dict):
         for key, item in value.items():
-            if key in NAME_FIELDS and isinstance(item, str) and item and item not in ALLOWED: yield item
+            if key in NAME_FIELDS and isinstance(item, str) and item and not allowed_name(item): yield item
             else: yield from names(item)
     elif isinstance(value, list):
         for item in value: yield from names(item)
@@ -39,8 +44,8 @@ def check(root=ROOT):
         rel=path.relative_to(root)
         for label, pattern in PATTERNS.items():
             if pattern.search(content): findings.append(f'{rel}: {label}')
-        for match in re.findall(r'\bPerson [A-Z][a-z]+\b', content):
-            if match not in ALLOWED: findings.append(f'{rel}: name outside synthetic allowlist')
+        for match in re.findall(r'\bPerson [A-Z][a-z]+(?: [0-9]+)?\b', content):
+            if not allowed_name(match): findings.append(f'{rel}: name outside synthetic allowlist')
         try:
             data=json.loads(content) if path.suffix == '.json' else list(csv.DictReader(content.splitlines())) if path.suffix == '.csv' else None
             if data is not None and any(names(data)): findings.append(f'{rel}: roster name outside synthetic allowlist')

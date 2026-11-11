@@ -302,6 +302,9 @@ def recommend(data: dict[str, Any]) -> dict[str, Any]:
     if relationship_count:
         preferred = "matrix_relationships"
         rationale = "The input contains explicit non-hierarchical relationships."
+    elif len(roots) == 1 and direct_reports > 8:
+        preferred = "enterprise_overview"
+        rationale = "A wide leadership span is clearer as an overview with drilldowns."
     elif len(people) >= 35:
         preferred = "enterprise_overview"
         rationale = "The roster is too large for a single readable chart."
@@ -722,17 +725,40 @@ def _compact_pages(data: dict[str, Any], by_id: dict[str, dict[str, Any]], mode:
         _add_row_alignment(page, overview_elements[row * columns:(row + 1) * columns], f"overview-row-{row}")
     page["split_reason"] = "Compact hierarchy exceeded 26 positions, four layers, or eight cards in one row."
     pages = [page]
+    groups: list[list[dict[str, Any]]] = []
+    pending: list[dict[str, Any]] = []
     for branch_id, name, _ in summaries:
         branch_root = by_id[branch_id]
         members = [branch_root] + _branch_members(branch_id, children)
-        for chunk_index, group in enumerate(_chunk(members, 22), start=1):
-            detail = _new_page(data, len(pages) + 1, f"branch-{branch_id}", f"{name}{' · continued' if chunk_index > 1 else ''}")
-            if _supports_level_layout(group):
-                _layout_levels(data, detail, group)
-            else:
-                _layout_roster_grid(detail, group)
-            detail["split_reason"] = "Branch drilldown generated to preserve readable card geometry."
-            pages.append(detail)
+        parent = by_id.get(branch_root["manager_id"])
+        context = [parent] if parent else []
+        candidate = pending + [person for person in context + members if person not in pending]
+        # The layout uses leaf spans, which can exceed the widest level.
+        def fits(group: list[dict[str, Any]]) -> bool:
+            if len(group) > 26 or not _supports_level_layout(group):
+                return False
+            subset = {person["id"] for person in group}
+            leaf_count = sum(not any(child["id"] in subset for child in children[person["id"]]) for person in group)
+            return leaf_count <= 8 and max(_depths({person["id"]: {**person, "manager_id": person["manager_id"] if person["manager_id"] in subset else None} for person in group}).values(), default=0) <= 4
+        if pending and not fits(candidate):
+            groups.append(pending)
+            pending = []
+        candidate = context + members
+        if not fits(candidate):
+            for chunk in _chunk(members, 22):
+                groups.append(chunk)
+        else:
+            pending = pending + [person for person in candidate if person not in pending]
+    if pending:
+        groups.append(pending)
+    for group in groups:
+        detail = _new_page(data, len(pages) + 1, f"branch-{group[0]['id']}", "Organization detail")
+        if _supports_level_layout(group):
+            _layout_levels(data, detail, group)
+        else:
+            _layout_roster_grid(detail, group)
+        detail["split_reason"] = "Branch drilldown generated to preserve readable card geometry."
+        pages.append(detail)
     return pages
 
 
@@ -822,7 +848,7 @@ def _functional_pages(data: dict[str, Any], by_id: dict[str, dict[str, Any]]) ->
                 column_cards.append(element)
             page["alignment_groups"].append(
                 {
-                    "stable_name": stable_name("alignment", function, page["id"]),
+                    "stable_name": stable_name("alignment", function, page["id"] if part == 1 else f"{page['id']}-part-{part}"),
                     "axis": "x",
                     "edge": "left",
                     "members": [card["stable_name"] for card in column_cards],

@@ -22,3 +22,8 @@ standalone skill.
   subtrees are centered under their parents.
 - Local geometry is a preview aid only. It is not proof that a deck was
   created.
+
+### Fixed
+
+- Prevented duplicate names for repeated function panels on larger charts.
+- Packed sibling branches onto fewer compact hierarchy pages.
