@@ -13,9 +13,12 @@ standalone skill.
   roster starters.
 - Open, planned and resigned statuses, with size limits and a text outline.
 - Install paths for Claude Code and Claude Desktop.
+- A Slides request compiler with readback verification.
 - Public-content checks and regression tests.
 
 ### Changed
 
+- Elbow connectors are the default, card text is smaller, and hierarchy
+  subtrees are centered under their parents.
 - Local geometry is a preview aid only. It is not proof that a deck was
   created.

@@ -19,27 +19,30 @@ This copies the skill to your personal Claude skills folder and gives you
 `/orgchart`. Running it again refreshes the files and keeps any extra files you
 added.
 
-Plugin install (to be confirmed in install test):
+Plugin install:
 
 ```
 /plugin marketplace add chadronbryant-collibra/orgchart
 /plugin install orgchart@orgchart
 ```
 
-With the plugin, the command may appear namespaced as `/orgchart:orgchart`.
-That is also to be confirmed in install test.
+Plugin skills are named after their plugin, so this one is `/orgchart:orgchart`.
+Plain `/orgchart` also works as long as nothing else on your machine uses that
+name. Prefer the personal install above if you want the short name every time.
 
 ## Claude Desktop
 
-Build the zip, then upload it:
+Download `orgchart.zip` from the latest GitHub release, or build it yourself:
 
 ```sh
 python3 scripts/build_desktop_zip.py
 ```
 
-Then select Customize > Skills and upload `dist/orgchart.zip`. Once releases
-are published you can download the zip from GitHub Releases instead. Both the
-upload path and the release download are to be confirmed in install test.
+Then open Claude, select Customize > Skills, and upload the zip. Keep the zip as
+it is: it holds one `orgchart` folder with `SKILL.md` inside, which is the
+layout Claude expects. Skills that run scripts need code execution, so if
+uploading is greyed out, ask your admin whether skills and code execution are
+turned on for your organization.
 
 ## Check it worked
 

@@ -61,6 +61,24 @@ class SlidesTests(unittest.TestCase):
         rows=json.loads((SKILL/'examples/starters/simple-team.json').read_text()); data=normalizer.normalize_source(rows,source_kind='flat_json')[0]; geo=geometry.layout(data,'compact_hierarchy')
         out=slides.compile_requests(geo,'neutral',existing={'slides':[{'objectId':'old_slide'}]},chunk=7); self.assertEqual(out['presentation_requests'][-1][-1],{'deleteObject':{'objectId':'old_slide'}})
         read=readback(out); page=read['slides'][0]; page['pageElements']=[{'objectId':'group_1','elementGroup':{'children':page['pageElements']}}]; self.assertTrue(all(x[2] for x in slides.verify(geo,read)))
+    def test_proto_default_and_styles(self):
+        rows=json.loads((SKILL/'examples/starters/future-state-plan.json').read_text())
+        geo=geometry.layout(normalizer.normalize_source(rows,source_kind='flat_json')[0], 'compact_hierarchy')
+        out=slides.compile_requests(geo,'collibra-2026')
+        read=readback(out)
+        for page in read['slides']:
+            for element in page['pageElements']:
+                for connection in element.get('line',{}).get('lineProperties',{}).values():
+                    if connection.get('connectionSiteIndex') == 0: connection.pop('connectionSiteIndex')
+        self.assertTrue(all(x[2] for x in slides.verify(geo,read)))
+        requests=[r for chunk in out['presentation_requests'] for r in chunk]
+        self.assertTrue(all(r['createLine']['lineCategory']=='BENT' for r in requests if 'createLine' in r))
+        ids={slides.card_id(c) for p in geo['pages'] for c in slides.cards(p)}
+        styles=[r['updateTextStyle'] for r in requests if 'updateTextStyle' in r and r['updateTextStyle']['objectId'] in ids]
+        self.assertEqual({x['style']['fontSize']['magnitude'] for x in styles if x['textRange']['type']=='ALL'}, {9})
+        self.assertEqual({x['style']['fontSize']['magnitude'] for x in styles if x['textRange']['type']=='FIXED_RANGE'}, {10})
+        straight=slides.compile_requests(geo,'neutral',connector_category='STRAIGHT')
+        self.assertTrue(all(r['createLine']['lineCategory']=='STRAIGHT' for chunk in straight['presentation_requests'] for r in chunk if 'createLine' in r))
     def test_status_and_unicode(self):
         card={'data':{'name':'A😀','title':'Role','status':'other','statusLabel':'Leave'}}
         self.assertEqual(slides.card_text(card),'A😀\nRole\nLeave')

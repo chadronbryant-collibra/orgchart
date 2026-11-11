@@ -57,6 +57,31 @@ class OrgchartTests(unittest.TestCase):
                 with self.subTest(starter=starter,mode=mode):
                     result=geometry.layout(data,mode)
                     self.assertTrue(geometry.validate_layout(result)['valid'])
+    def test_compact_subtree_groups_and_overlap(self):
+        deep = [{'node_id': str(i), 'display_name': 'Person Alpha', 'title': 'Role',
+                 'manager_node_id': str(i-1) if i else ''} for i in range(8)]
+        for label, rows in [(name, self.rows(name)) for name in ('simple-team', 'functional-org', 'future-state-plan')] + [('eight-row', deep)]:
+            data = self.render(rows)
+            parents = {p['id']: p['manager_id'] for p in data['people']}
+            result = geometry.layout(data, 'compact_hierarchy')
+            for page in result['pages']:
+                cards = [e for e in page['elements'] if e.get('node_id')]
+                by_id = {e['node_id']: e for e in cards}
+                for i, card in enumerate(cards):
+                    for other in cards[i+1:]:
+                        self.assertFalse(geometry._intersects(card['box'], other['box']), (label, page['id']))
+                groups = {}
+                for card in cards:
+                    parent = parents[card['node_id']]
+                    if parent in by_id: groups.setdefault(parent, []).append(card)
+                for parent, children in groups.items():
+                    center = lambda e: e['box']['x'] + e['box']['w']/2
+                    child_center = (min(map(center, children)) + max(map(center, children))) / 2
+                    self.assertLessEqual(abs(child_center-center(by_id[parent])), by_id[parent]['box']['w']/2 + 0.001, (label, page['id'], parent))
+                    for child in children:
+                        for other in groups:
+                            if other != parent and abs(by_id[other]['box']['y']-by_id[parent]['box']['y']) < 0.001:
+                                self.assertLessEqual(abs(center(child)-center(by_id[parent])), abs(center(child)-center(by_id[other])) + 0.001, (label, child['node_id']))
     def test_geometry_limits(self):
         data=self.render(); data['people'] *= 34
         with self.assertRaisesRegex(geometry.GeometryError,'200'): geometry.recommend(data)

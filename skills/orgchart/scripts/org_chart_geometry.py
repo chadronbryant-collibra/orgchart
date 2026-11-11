@@ -563,23 +563,48 @@ def _layout_levels(data: dict[str, Any], page: dict[str, Any], people: list[dict
     card_h = min(0.72, max(0.48, (content["h"] - (level_count - 1) * vertical_gap) / max(level_count, 1)))
     total_h = level_count * card_h + max(0, level_count - 1) * vertical_gap
     top = content["y"] + max(0.0, (content["h"] - total_h) / 2)
+    # Allocate contiguous horizontal space to each subtree, then center each
+    # parent over the span of its immediate children.
+    children: dict[str | None, list[dict[str, Any]]] = defaultdict(list)
+    for person in ordered:
+        parent = person["manager_id"] if person["manager_id"] in subset else None
+        children[parent].append(person)
+    def width(person: dict[str, Any]) -> int:
+        return max(1, sum(width(child) for child in children[person["id"]]))
+    roots = children[None]
+    units = sum(width(root) for root in roots)
+    card_w = min(2.0, (content["w"] - GAP * (units - 1)) / units)
+    if card_w < 0.72:
+        raise GeometryError("Hierarchy row is too wide; split the chart before rendering.")
+    pitch = card_w + GAP
+    positions: dict[str, float] = {}
+    def place(person: dict[str, Any], left: float) -> float:
+        descendants = children[person["id"]]
+        if not descendants:
+            center = left + card_w / 2
+        else:
+            centers = []
+            for child in descendants:
+                centers.append(place(child, left))
+                left += width(child) * pitch
+            center = (centers[0] + centers[-1]) / 2
+        positions[person["id"]] = center
+        return center
+    left = content["x"] + (content["w"] - (units * pitch - GAP)) / 2
+    for root in roots:
+        place(root, left)
+        left += width(root) * pitch
     created: dict[str, dict[str, Any]] = {}
     for level_index in sorted(levels):
-        row = levels[level_index]
-        columns = len(row)
-        usable = content["w"]
-        card_w = min(2.0, (usable - GAP * (columns - 1)) / columns)
-        if card_w < 0.72:
-            raise GeometryError("Hierarchy row is too wide; split the chart before rendering.")
-        row_w = columns * card_w + max(0, columns - 1) * GAP
-        left = content["x"] + (usable - row_w) / 2
-        row_elements: list[dict[str, Any]] = []
-        for column, person in enumerate(row):
-            element = _card(person, _rect(left + column * (card_w + GAP), top + level_index * (card_h + vertical_gap), card_w, card_h), page["id"])
+        row_elements = []
+        for person in levels[level_index]:
+            element = _card(person, _rect(positions[person["id"]] - card_w / 2, top + level_index * (card_h + vertical_gap), card_w, card_h), page["id"])
             page["elements"].append(element)
             row_elements.append(element)
             created[person["id"]] = element
         _add_row_alignment(page, row_elements, f"level-{level_index}")
+        if len(row_elements) > 1:
+            page["alignment_groups"][-1].pop("distribution_axis", None)
     for person in ordered:
         manager_id = person["manager_id"]
         if manager_id in created:
