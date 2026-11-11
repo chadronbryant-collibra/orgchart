@@ -18,9 +18,9 @@ by function without reporting lines. Matrix pages show dotted secondary links
 when a clear route is available; cross-page or obstructed links appear in a
 companion table. Simple tree keeps reporting lines on its branch pages.
 
-Overview + team pages starts with one summary card per function, then gives
-each function its own team pages. Team pages draw reporting lines like Simple
-tree, with each manager centered over their reports. A page holds at most 8
+Overview + team pages shows the top leader above one summary card per
+function, then gives each function its own team pages. Team pages draw
+reporting lines like Simple tree, with each manager centered over their reports. A page holds at most 8
 cards across and 5 rows. When a team leader or a split branch reports to
 someone on another page, that manager appears as a grey context card at the
 top of the page, joined by a reporting line. A wide team repeats its leader as

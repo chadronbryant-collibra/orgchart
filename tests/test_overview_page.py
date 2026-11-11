@@ -32,8 +32,9 @@ class OverviewPageTest(unittest.TestCase):
 
     def test_card_grid_is_vertically_centered(self):
         content = self.overview['content_bounds']
-        top = min(card['box']['y'] for card in self.cards)
-        bottom = max(card['box']['y'] + card['box']['h'] for card in self.cards)
+        block = [e for e in self.overview['elements'] if e['type'] in ('group_summary_card', 'person_card')]
+        top = min(card['box']['y'] for card in block)
+        bottom = max(card['box']['y'] + card['box']['h'] for card in block)
         above = top - content['y']
         below = content['y'] + content['h'] - bottom
         self.assertAlmostEqual(above, below, places=2)

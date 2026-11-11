@@ -2,7 +2,7 @@
 name: orgchart
 description: "Build or update an editable Google Slides org chart from a roster, your Workday reporting line, a Google Sheet or a CSV. Use for org charts, team charts, reporting lines, reorg or headcount planning views."
 metadata:
-  version: "1.1.1"
+  version: "1.1.2"
 ---
 # Org chart
 
