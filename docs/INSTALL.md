@@ -44,6 +44,24 @@ layout Claude expects. Skills that run scripts need code execution, so if
 uploading is greyed out, ask your admin whether skills and code execution are
 turned on for your organization.
 
+## Everyone in your organization
+
+Claude Team and Enterprise owners can give the skill to everyone at once.
+Download `orgchart-plugin-v<version>.zip` from the latest GitHub release (or
+build it with `python3 scripts/build_plugin_zip.py`), then go to
+Organization settings > Plugins & skills > Add > Upload a plugin. Set its
+availability to "Available to install" or "Installed by default". It then
+reaches claude.ai, Claude Desktop, Cowork and Claude Code sessions that sync
+your account's plugins. Uploading a newer zip with the same plugin name
+replaces the old one.
+
+You can also upload the same zip just for yourself under Customize > Plugins >
+Add > Upload plugin, share it with a few people to try it, and use Publish to
+org when it's ready, if your organization allows that.
+
+Skills that run scripts need code execution, so check it's on for your
+organization.
+
 ## Check it worked
 
 Start a new chat or session and type `/orgchart help`. Claude should explain
