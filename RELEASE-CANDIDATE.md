@@ -113,14 +113,11 @@ function. Compiler compaction (one z-order request per page, default line and
 outline properties dropped) cut the largest page of a 150-person roster by
 about 10% (55,097 to 49,730 bytes, 190 to 172 requests) and the 23-page canary
 to about 531 KB. Lossless trimming stops there: each card still needs six
-requests because Slides has no style-by-reference. A real cut (a third or
-more) needs a different delivery route, for example a native Slides API
-client or Apps Script that takes the geometry directly, so the agent never
-relays page JSON. Only 5 of 23 canary pages were hand-delivered (about 25K
+requests because Slides has no style-by-reference. Only 5 of 23 canary pages were hand-delivered (about 25K
 tokens per large page), which is why the remaining 18 were left undelivered.
-`scripts/deliver_slides.py` now provides that direct route (tested offline with a
-fake transport; not yet run live because it needs a Slides-scoped token that
-Chadron supplies).
+Decision (Chadron, 2026-11-12): do not add a delivery client. Real users build
+over time, so the skill guides a staged build through the connector instead.
+The canary is a proof of concept; 6 of 23 pages delivered is enough.
 
 ## Open items for the joint review
 
