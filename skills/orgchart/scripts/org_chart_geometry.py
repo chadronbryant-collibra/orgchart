@@ -1066,11 +1066,12 @@ def _lead_label(heads):
 def _overview_grid(data, pages, groups, root, order, title, section,
                    level=0, parent_page=None, root_context=False, branch=False):
     """Shared 12-summary grid and safe root-to-summary connector routing."""
-    overview_chunks = _chunk(groups, 12) or [[]]
+    # A leader row of up to 8 keeps every reporting line drawable; wrapped rows cannot be connected.
+    overview_chunks = _chunk(groups, 8 if (branch and root) else 12) or [[]]
     for overview_index, group_chunk in enumerate(overview_chunks, start=1):
         page = _new_page(data, len(pages) + 1, section, title + (" · continued" if overview_index > 1 else ""))
         content = page["content_bounds"]
-        columns = min(6 if root else 4, len(group_chunk)) or 1
+        columns = min((8 if branch else 6) if root else 4, len(group_chunk)) or 1
         rows = math.ceil(len(group_chunk) / columns) or 1
         card_w = (content["w"] - GAP * (columns - 1)) / columns
         summary_top = content["y"]
@@ -1085,7 +1086,7 @@ def _overview_grid(data, pages, groups, root, order, title, section,
                 root_card = _summary_card(root["id"], root["name"], root["title"], root_card["box"], page["id"])
                 total = 1 + sum(len(members) for _, members in groups)
                 root_card["data"]["title"] = f"{root['title']} · {total} people"
-                root_card["data"]["lead"] = _lead_label([root])
+                root_card["data"]["lead"] = ""
             else:
                 root_card["data"]["context"] = root_context or overview_index > 1
             page["elements"].append(root_card)
@@ -1105,7 +1106,7 @@ def _overview_grid(data, pages, groups, root, order, title, section,
             element["data"]["lead"] = _lead_label(heads)
             if branch:
                 leader = members[0]
-                element["data"].update(name=leader["name"], title=f"{leader['title']} · {len(members)} people", lead=_lead_label([leader]))
+                element["data"].update(name=leader["name"], title=f"{leader['title']} · {len(members)} people", lead="")
             page["elements"].append(element)
             row_elements[row].append(element)
         for row, elements in row_elements.items():
@@ -1177,12 +1178,8 @@ def _enterprise_pages(data: dict[str, Any], by_id: dict[str, dict[str, Any]]) ->
         for part, ids in enumerate(packed):
             # Depth-limited or extremely wide leaf cohorts still get a navigation
             # checkpoint before each subsequent pair of team pages.
-            recent = 0
-            for previous in reversed(pages):
-                if previous["section"] != f"enterprise-{function}":
-                    break
-                recent += 1
-            if recent >= 2:
+            recent = part
+            if recent >= 2 and recent % 2 == 0:
                 upcoming = {node for chunk in packed[part:part + 2] for node in chunk}
                 heads = _group_heads([by_id[node] for node in upcoming], order)
                 _overview_grid(data, pages, [(p["id"], subtree(p, upcoming)) for p in heads],
@@ -1239,6 +1236,10 @@ def _finalize_navigation(pages, by_id):
             if not node:
                 continue
             card["data"].pop("continuation_hint", None)
+            # Context cards and overview pages already navigate through their
+            # own cards, so a hint there points at an arbitrary page.
+            if card["data"].get("context") or page["section"].endswith("overview"):
+                continue
             destinations = [placement[p["id"]] for p in children[node]
                             if p["id"] in placement and placement[p["id"]] != page["index"]]
             if destinations:
