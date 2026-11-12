@@ -57,6 +57,7 @@ and plugin zip builds.
 | 8 | Skill version check and a "how did it go" feedback link | Small; add once the release channel is settled. |
 | 9 | CSV import helper for Workday report column names | Small, removes mapping questions. |
 | 10 | Search by name to build a team from several people | Needs a directory source with reporting lines; defer. |
+| 11 | Selectable visual themes for cards and slides, drawn from the Collibra brand toolkit (colour sets, card styles, fonts) | Chadron's request 2026-11-12. Design with Codex CLI after this release: put every card colour, border and font behind one theme table in the geometry/compiler, keep the current look as the default theme, and gate extra themes behind an optional `--theme` choice. Check each theme with `collibra-design` and thumbnails. |
 
 ## Live canary (synthetic, 2026-11-12)
 
