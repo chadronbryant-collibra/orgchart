@@ -25,11 +25,14 @@ def ident(value):
     safe = re.sub(r'[^A-Za-z0-9_:-]', '_', value)
     return 'org_' + safe[:33] + '_' + hashlib.sha256(value.encode()).hexdigest()[:12]
 
+def _r(value, digits=2):
+    return round(value, digits)
+
 def color(value):
-    return {'rgbColor': {k:int(value[i:i+2],16)/255 for k,i in [('red',0),('green',2),('blue',4)]}}
+    return {'rgbColor': {k:_r(int(value[i:i+2],16)/255, 4) for k,i in [('red',0),('green',2),('blue',4)]}}
 
 def props(page, box):
-    return {'pageObjectId':page, 'size':{'width':{'magnitude':box['w']*72,'unit':'PT'},'height':{'magnitude':box['h']*72,'unit':'PT'}}, 'transform':{'scaleX':1,'scaleY':1,'translateX':box['x']*72,'translateY':box['y']*72,'unit':'PT'}}
+    return {'pageObjectId':page, 'size':{'width':{'magnitude':_r(box['w']*72),'unit':'PT'},'height':{'magnitude':_r(box['h']*72),'unit':'PT'}}, 'transform':{'scaleX':1,'scaleY':1,'translateX':_r(box['x']*72),'translateY':_r(box['y']*72),'unit':'PT'}}
 
 def cards(page): return [e for e in page.get('elements',[]) if e.get('collision_class') == 'card']
 def card_id(card): return ident(card.get('google_slides_object_id') or card['stable_name'])
@@ -67,11 +70,11 @@ def compile_requests(geometry, theme, layout_id=None, existing=None, chunk=400, 
         properties={'shapeBackgroundFill':{'solidFill':{'color':color(fill)}},'outline':{'outlineFill':{'solidFill':{'color':color(border)}},'weight':{'magnitude':1,'unit':'PT'},'dashStyle':dash},'contentAlignment':'MIDDLE'}
         if title_style: properties.update(shapeBackgroundFill={'propertyState':'NOT_RENDERED'},outline={'propertyState':'NOT_RENDERED'})
         requests.append({'updateShapeProperties':{'objectId':obj,'shapeProperties':properties,'fields':'shapeBackgroundFill,outline,contentAlignment'}})
-        requests.append({'updateTextStyle':{'objectId':obj,'textRange':{'type':'ALL'},'style':{'fontFamily':'Arial','fontSize':{'magnitude':fontsize,'unit':'PT'},'foregroundColor':{'opaqueColor':color(ink or palette['ink'])}},'fields':'fontFamily,fontSize,foregroundColor'}})
+        requests.append({'updateTextStyle':{'objectId':obj,'textRange':{'type':'ALL'},'style':{'fontFamily':'Arial','fontSize':{'magnitude':_r(fontsize),'unit':'PT'},'foregroundColor':{'opaqueColor':color(ink or palette['ink'])}},'fields':'fontFamily,fontSize,foregroundColor'}})
         if bold_first:
             # Slides indexes UTF-16 code units, not Python code points.
             end=len(text.split('\n',1)[0].encode('utf-16-le'))//2
-            if end: requests.append({'updateTextStyle':{'objectId':obj,'textRange':{'type':'FIXED_RANGE','startIndex':0,'endIndex':end},'style':dict({'bold':True}, **({'fontSize':{'magnitude':name_size,'unit':'PT'},'foregroundColor':{'opaqueColor':color(palette['ink'])}} if name_size is not None else {})), 'fields':'bold,fontSize,foregroundColor' if name_size is not None else 'bold'}})
+            if end: requests.append({'updateTextStyle':{'objectId':obj,'textRange':{'type':'FIXED_RANGE','startIndex':0,'endIndex':end},'style':dict({'bold':True}, **({'fontSize':{'magnitude':_r(name_size),'unit':'PT'},'foregroundColor':{'opaqueColor':color(palette['ink'])}} if name_size is not None else {})), 'fields':'bold,fontSize,foregroundColor' if name_size is not None else 'bold'}})
         requests.append({'updateParagraphStyle':{'objectId':obj,'textRange':{'type':'ALL'},'style':{'alignment':'START' if title_style else 'CENTER'},'fields':'alignment'}})
     for page in geometry['pages']:
         pid=reserve(ident(page['id'])); count['pages']+=1
@@ -124,7 +127,7 @@ def compile_requests(geometry, theme, layout_id=None, existing=None, chunk=400, 
             count['cards']+=1
         for line in page.get('connectors',[]):
             lid=reserve(line_id(line)); seg=line['segments']; x1,y1=seg[0]['x1'],seg[0]['y1']; x2,y2=seg[-1]['x2'],seg[-1]['y2']
-            ep={'pageObjectId':pid,'size':{'width':{'magnitude':max(abs(x2-x1)*72,0.01),'unit':'PT'},'height':{'magnitude':max(abs(y2-y1)*72,0.01),'unit':'PT'}},'transform':{'scaleX':-1 if x2<x1 else 1,'scaleY':-1 if y2<y1 else 1,'translateX':x1*72,'translateY':y1*72,'unit':'PT'}}
+            ep={'pageObjectId':pid,'size':{'width':{'magnitude':_r(max(abs(x2-x1)*72,0.01)),'unit':'PT'},'height':{'magnitude':_r(max(abs(y2-y1)*72,0.01)),'unit':'PT'}},'transform':{'scaleX':-1 if x2<x1 else 1,'scaleY':-1 if y2<y1 else 1,'translateX':_r(x1*72),'translateY':_r(y1*72),'unit':'PT'}}
             requests.append({'createLine':{'objectId':lid,'lineCategory':line.get('native_category','BENT') if connector_category == 'auto' else connector_category,'elementProperties':ep}})
             lp={'startConnection':{'connectedObjectId':lookup[line['from']],'connectionSiteIndex':line['google_slides_from_site_index']},'endConnection':{'connectedObjectId':lookup[line['to']],'connectionSiteIndex':line['google_slides_to_site_index']},'lineFill':{'solidFill':{'color':color(palette['matrix'] if line.get('type') == 'matrix_relationship' else (palette['ink'] if theme == 'collibra-2026' else palette['muted']))}},'weight':{'magnitude':1,'unit':'PT'},'dashStyle':'DOT' if line.get('line_style')=='dotted' or line.get('type')=='dotted_line' else 'SOLID','startArrow':'NONE','endArrow':'NONE'}
             requests.append({'updateLineProperties':{'objectId':lid,'lineProperties':lp,'fields':','.join(lp)}})
@@ -157,8 +160,30 @@ def walk(elements):
         yield e
         yield from walk(e.get('elementGroup',{}).get('children',[]))
 
+def unwrap_readback(value):
+    """Normalize native and MCP read_presentation envelopes to a slides dict."""
+    accepted = ('Expected readback as {"slides": [...]}, {"content": {"slides": [...]}}, '
+                'a JSON string holding either, a list of MCP text blocks '
+                '[{"type":"text","text":"<json>"}], or {"content": [MCP text blocks]}')
+    def unwrap(item, depth=0):
+        if depth > 20: raise ValueError(accepted)
+        if isinstance(item, str):
+            try: item = json.loads(item)
+            except ValueError as exc: raise ValueError(accepted) from exc
+            return unwrap(item, depth+1)
+        if isinstance(item, dict):
+            if isinstance(item.get('slides'), list): return {'slides': item['slides']}
+            if 'content' in item: return unwrap(item['content'], depth+1)
+        if isinstance(item, list) and item and all(
+                isinstance(block, dict) and block.get('type') == 'text'
+                and isinstance(block.get('text'), str) for block in item):
+            return {'slides': [slide for block in item
+                               for slide in unwrap(block['text'], depth+1)['slides']]}
+        raise ValueError(accepted)
+    return unwrap(value)
+
 def verify(geometry, readback):
-    slides={s['objectId']:s for s in readback.get('slides',[])}; results=[]
+    slides={s['objectId']:s for s in unwrap_readback(readback)['slides']}; results=[]
     for page in geometry['pages']:
         pid=ident(page['id']); slide=slides.get(pid); results.append(('slide',pid,slide is not None))
         elements={e['objectId']:e for e in walk(slide.get('pageElements',[]))} if slide else {}
@@ -182,24 +207,62 @@ def verify(geometry, readback):
             obj=line_id(line); element=elements.get(obj,{}); lp=element.get('line',{}).get('lineProperties',{})
             start={'connectedObjectId':lookup[line['from']],'connectionSiteIndex':line['google_slides_from_site_index']}; end={'connectedObjectId':lookup[line['to']],'connectionSiteIndex':line['google_slides_to_site_index']}
             def matches(actual, expected):
-                return actual is not None and actual.get('connectedObjectId') == expected['connectedObjectId'] and actual.get('connectionSiteIndex', 0) == expected['connectionSiteIndex']
+                return isinstance(actual, dict) and actual.get('connectedObjectId') == expected['connectedObjectId'] and actual.get('connectionSiteIndex', 0) == expected['connectionSiteIndex']
             results.append(('connector',obj,matches(lp.get('startConnection'), start) and matches(lp.get('endConnection'), end)))
     return results
 
+def write_json(path, value, pretty=False):
+    options = {'indent': 2} if pretty else {'separators': (',', ':')}
+    Path(path).write_text(json.dumps(value, ensure_ascii=False, **options)+'\n', encoding='utf-8')
+
+def write_pages(directory, result, pretty=False):
+    """Split at createSlide boundaries; template cleanup is always sent last."""
+    directory=Path(directory); directory.mkdir(parents=True, exist_ok=True)
+    pages=[]; cleanup=[]
+    for chunk in result['presentation_requests']:
+        for request in chunk:
+            if 'deleteObject' in request:
+                cleanup.append(request)
+            else:
+                if 'createSlide' in request: pages.append([])
+                pages[-1].append(request)
+    files=[]
+    for i, requests in enumerate(pages, 1):
+        filename=f'page-{i:03}.json'
+        write_json(directory/filename, requests, pretty)
+        files.append({'file': filename, 'request_count': len(requests)})
+    write_json(directory/'cleanup.json', cleanup, pretty)
+    write_json(directory/'manifest.json', {
+        'files': files, 'cleanup': {'file': 'cleanup.json', 'request_count': len(cleanup)},
+        'cleanup_instruction': 'Send cleanup.json last, only after all pages succeed.',
+    }, pretty)
+    return len(files)
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__,formatter_class=argparse.RawDescriptionHelpFormatter); sub=parser.add_subparsers(dest='command',required=True)
-    c=sub.add_parser('compile',help='Compile geometry JSON into ordered Slides request chunks'); c.add_argument('geometry'); c.add_argument('--theme',required=True,choices=THEMES); c.add_argument('--layout-id'); c.add_argument('--existing-slides',help='read_presentation JSON with slides[].objectId'); c.add_argument('--connector-category',choices=('auto','BENT','STRAIGHT'),default='auto'); c.add_argument('--chunk',type=int,default=400); c.add_argument('--output',required=True)
-    v=sub.add_parser('verify',help='Check expected IDs, shape text and attached line endpoints in read_presentation JSON'); v.add_argument('geometry'); v.add_argument('presentation_readback')
+    c=sub.add_parser('compile',help='Compile geometry JSON into ordered Slides request chunks'); c.add_argument('geometry'); c.add_argument('--theme',required=True,choices=THEMES); c.add_argument('--layout-id'); c.add_argument('--existing-slides',help='read_presentation JSON with slides[].objectId'); c.add_argument('--connector-category',choices=('auto','BENT','STRAIGHT'),default='auto'); c.add_argument('--chunk',type=int,default=400); c.add_argument('--output'); c.add_argument('--split-dir'); c.add_argument('--pretty',action='store_true',help='Write indented JSON')
+    v=sub.add_parser('verify',help='Check expected IDs, shape text and attached line endpoints in read_presentation JSON'); v.add_argument('geometry'); v.add_argument('presentation_readback',nargs='+'); v.add_argument('--summary',action='store_true',help='Print counts and failures only')
     sub.add_parser('fields',help='Print the read_presentation fields mask required by verify')
     a=parser.parse_args()
     try:
         if a.command=='fields': print(FIELDS); return 0
-        geometry=json.loads(Path(a.geometry).read_text())
+        geometry=json.loads(Path(a.geometry).read_text(encoding='utf-8'))
         if a.command=='compile':
-            existing=json.loads(Path(a.existing_slides).read_text()) if a.existing_slides else None
-            result=compile_requests(geometry,a.theme,a.layout_id,existing,a.chunk,a.connector_category); Path(a.output).write_text(json.dumps(result,indent=2,ensure_ascii=False)+'\n'); print(json.dumps(result['summary'],sort_keys=True)); return 0
-        results=verify(geometry,json.loads(Path(a.presentation_readback).read_text())); print('RESULT  TYPE       OBJECT ID')
-        for typ,obj,ok in results: print(f'{"PASS" if ok else "FAIL":7} {typ:10} {obj}')
+            if not (a.output or a.split_dir): raise ValueError('compile requires --output or --split-dir')
+            existing=unwrap_readback(json.loads(Path(a.existing_slides).read_text(encoding='utf-8'))) if a.existing_slides else None
+            result=compile_requests(geometry,a.theme,a.layout_id,existing,a.chunk,a.connector_category)
+            if a.output: write_json(a.output,result,a.pretty)
+            pages_files=write_pages(a.split_dir,result,a.pretty) if a.split_dir else 0
+            print(json.dumps(dict(result['summary'],pages_files=pages_files),sort_keys=True)); return 0
+        readback={'slides': [slide for filename in a.presentation_readback
+                            for slide in unwrap_readback(json.loads(Path(filename).read_text(encoding='utf-8')))['slides']]}
+        results=verify(geometry,readback)
+        if a.summary:
+            passed=sum(ok for _,_,ok in results)
+            print(f'PASS {passed} FAIL {len(results)-passed}')
+        else: print('RESULT  TYPE       OBJECT ID')
+        for typ,obj,ok in results:
+            if not a.summary or not ok: print(f'{"PASS" if ok else "FAIL":7} {typ:10} {obj}')
         return 0 if all(x[2] for x in results) else 1
     except (OSError, ValueError, KeyError, TypeError) as exc:
         print('Error: '+str(exc),file=sys.stderr); return 1

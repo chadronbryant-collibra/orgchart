@@ -16,10 +16,14 @@ Commands: `/orgchart` starts a chart; `/orgchart templates` lists choices;
    and offer a text preview meanwhile.
 2. Ask for purpose (current, planned or mixed), audience and as-of date. Keep
    proposed positions distinct from current facts.
-3. Get people from a permitted source: Workday self-scoped tools, a Google Sheet,
-   CSV, pasted roster or typed list. Workday tools cover your profile, manager,
-   reporting chain and direct reports; access is limited to your own line and
-   one manager level per call. Do not infer wider access. See
+3. Get people from a permitted source, and say up front what each can reach.
+   Self-service Workday tools cover only the signed-in user's own line: their
+   profile, manager, reporting chain and direct reports, one manager level per
+   call. They cannot build another leader's organization or a whole function.
+   For anything wider, ask for a Google Sheet or CSV export (for example a
+   Workday team or supervisory-organization report) with node_id, display_name,
+   title, manager_node_id and function columns. Do not infer wider access or
+   fall back to another system without the user's say-so. See
    [data sources](references/data-sources.md) and [privacy](references/privacy.md).
 4. Normalize locally and show the text outline, status totals, recommendation
    and page plan before any Slides call. Resolve missing or ambiguous links.

@@ -20,26 +20,39 @@ compiler is local; it does not create or update a presentation.
    python3 scripts/slides_requests.py compile orgchart-work/geometry.json \
      --theme collibra-2026 --layout-id g3efe399732d_0_346 \
      --existing-slides orgchart-work/existing.json \
-     --output orgchart-work/requests.json
+     --output orgchart-work/requests.json --split-dir orgchart-work/pages
    ```
 
    For neutral use `--theme neutral` and omit `--layout-id`. The command prints
-   counts and writes `presentation_requests`, an ordered array of request arrays.
-   The default chunk limit is 400; set `--chunk` if needed. Each chunk depends on
-   earlier chunks, so keep their order. Review counts before submitting.
-5. For each chunk, call Slides `update_presentation` with the copied
-   `presentationId` and that chunk as `requests`. Send one call at a time in
-   order. These are raw Google Slides batchUpdate requests, not a wrapper around
-   the entire compiler output.
+   counts on one line, including `pages_files`. JSON is compact by default;
+   add `--pretty` for indented files. `--split-dir` writes `page-001.json`,
+   `page-002.json`, and so on, plus `manifest.json` with the file order and
+   request counts. Each page file is an array of requests for one complete
+   slide, including its cards, connectors and legends. Its connectors refer
+   only to cards created in that file. Review counts before submitting.
+
+   `--output` writes the full `presentation_requests` array of request arrays.
+   Its default chunk limit is 400; set `--chunk` if needed. You can use either
+   output option or both. Choose one submission path so requests are sent once.
+5. Send `page-001.json`, `page-002.json`, and the remaining page files in
+   manifest order with Slides `update_presentation`. Use the copied
+   `presentationId` and each file's array as `requests`. Send one call at a time.
+   Only after every page succeeds, send `cleanup.json` to delete the template
+   slides. Send cleanup last; it must not run after a page failure. These are
+   raw Google Slides batchUpdate requests, not the entire compiler output.
 6. Run `python3 scripts/slides_requests.py fields` and use its exact output as
-   the `read_presentation` fields mask. Save the response as `readback.json`.
-   Then run:
+   the `read_presentation` fields mask. Paste the raw connector output into
+   `readback.json`; keep its `content` wrapper. Then run:
 
    ```sh
-   python3 scripts/slides_requests.py verify orgchart-work/geometry.json orgchart-work/readback.json
+   python3 scripts/slides_requests.py verify orgchart-work/geometry.json \
+     orgchart-work/readback.json --summary
    ```
 
-   Resolve every failure. Verification checks expected slide and card IDs, card
+   For separate page readbacks, list all their files after the geometry file;
+   verification merges their slides. Bare `slides` objects, JSON strings and
+   MCP text-block envelopes also work. `--summary` prints `PASS n FAIL m` and
+   each failing line. Resolve every failure. Verification checks expected slide and card IDs, card
    shape and starting text, and both attached line endpoints and site indexes.
    It does not prove the saved slide looks right or that a line follows a move.
 7. Fetch a thumbnail for one slide per page and inspect readability, completeness,
