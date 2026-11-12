@@ -109,8 +109,15 @@ pages are about 34 KB (roughly 12,000 output tokens) each, so 82 pages (800
 people) would be around 1M output tokens and a 120-page deck more. I did not
 build one. Recommendation: keep 1,000 people and 120 pages as hard ceilings,
 but have the skill warn above about 25 pages and offer `plan` to split by
-function. Reducing requests per card (merge the five styling requests) would
-cut size by roughly a third and is the next worthwhile delivery change.
+function. Compiler compaction (one z-order request per page, default line and
+outline properties dropped) cut the largest page of a 150-person roster by
+about 10% (55,097 to 49,730 bytes, 190 to 172 requests) and the 23-page canary
+to about 531 KB. Lossless trimming stops there: each card still needs six
+requests because Slides has no style-by-reference. A real cut (a third or
+more) needs a different delivery route, for example a native Slides API
+client or Apps Script that takes the geometry directly, so the agent never
+relays page JSON. Only 5 of 23 canary pages were hand-delivered (about 25K
+tokens per large page), which is why the remaining 18 were left undelivered.
 
 ## Open items for the joint review
 
