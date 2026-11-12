@@ -47,7 +47,7 @@ class ScaleTests(unittest.TestCase):
                 with self.subTest(roster=kind, mode=mode):
                     result = geometry.layout(data, mode)
                     self.assertTrue(geometry.validate_layout(result)['valid'])
-                    self.assertLessEqual(result['page_count'], 30)
+                    self.assertLessEqual(result['page_count'], geometry.MAX_PAGES)
                     if kind == 'wide' and mode == 'compact_hierarchy':
                         self.assertLessEqual(result['page_count'], 5)
                     if kind == 'deep60' and mode == 'compact_hierarchy':
@@ -64,7 +64,7 @@ class ScaleTests(unittest.TestCase):
                 self.assertTrue(any({person["id"], person["manager_id"]} <= nodes for nodes in page_nodes), person["id"])
 
     def test_wide_recommendation(self):
-        self.assertIn(geometry.recommend(roster('wide'))['recommended_mode'], ('compact_hierarchy',))
+        self.assertIn(geometry.recommend(roster('wide'))['recommended_mode'], ('enterprise_overview',))
 
 if __name__ == '__main__':
     unittest.main()

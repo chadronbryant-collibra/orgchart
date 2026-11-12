@@ -45,8 +45,8 @@ class OrgchartTests(unittest.TestCase):
         result,_=normalizer.normalize_source(data,source_kind='canonical_json')
         self.assertEqual(result['people'][0]['statusLabel'],'Leave')
     def test_people_limit(self):
-        rows=[{'node_id':str(i),'display_name':'Person Alpha','title':'Role','manager_node_id':'0' if i else ''} for i in range(201)]
-        with self.assertRaisesRegex(normalizer.NormalizationError,'200'): self.render(rows)
+        rows=[{'node_id':str(i),'display_name':'Person Alpha','title':'Role','manager_node_id':'0' if i else ''} for i in range(1001)]
+        with self.assertRaisesRegex(normalizer.NormalizationError,'1000'): self.render(rows)
     def test_matrix_limit(self):
         rows=self.rows(); rows[0]['dotted_to_node_ids']=';'.join([rows[1]['node_id']]*9)
         with self.assertRaisesRegex(normalizer.NormalizationError,'8 matrix'): self.render(rows)
@@ -111,11 +111,11 @@ class OrgchartTests(unittest.TestCase):
         table=next(e for p in matrix['pages'] for e in p['elements'] if e['type']=='relationship_table')
         self.assertEqual(table['data']['reason'],'1 link(s) cross pages or could not be drawn without crossing a card')
     def test_geometry_limits(self):
-        data=self.render(); data['people'] *= 34
-        with self.assertRaisesRegex(geometry.GeometryError,'200'): geometry.recommend(data)
+        data=self.render(); data['people'] *= 1000
+        with self.assertRaisesRegex(geometry.GeometryError,'1000'): geometry.recommend(data)
         data=self.render(); data['relationships']=[{}]*9
         with self.assertRaisesRegex(geometry.GeometryError,'8 matrix'): geometry.layout(data)
-        self.assertFalse(geometry.validate_layout({'pages':[{'id':str(i),'elements':[]} for i in range(31)]})['valid'])
+        self.assertFalse(geometry.validate_layout({'pages':[{'id':str(i),'elements':[]} for i in range(geometry.MAX_PAGES+1)]})['valid'])
     def test_preview(self):
         output=preview.outline(self.render())
         self.assertIn('Person Alpha', output); self.assertIn('Totals:',output); self.assertIn('Recommended:',output); self.assertIn('Page plan:',output)

@@ -26,6 +26,9 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
+# Must match org_chart_geometry.MAX_PEOPLE; kept import-free.
+MAX_PEOPLE = 1000
+
 NORMALIZED_SCHEMA = "collibra-org-chart-render-input/v1"
 RECEIPT_SCHEMA = "collibra-org-chart-provenance-receipt/v1"
 CAPABILITY_SCHEMA = "collibra-org-chart-connector-capabilities/v1"
@@ -634,8 +637,8 @@ def normalize_source(
     else:
         raise NormalizationError(f"Unsupported source_kind: {source_kind!r}")
 
-    if len(people) > 200:
-        raise NormalizationError("This chart supports up to 200 people or positions. Split the roster into smaller charts.")
+    if len(people) > MAX_PEOPLE:
+        raise NormalizationError(f"This chart supports up to {MAX_PEOPLE} people or positions. Use the plan command to split the roster.")
     if len(relationships) > 8:
         raise NormalizationError("This chart supports up to 8 matrix links. Use a separate relationship list for the rest.")
     for person in people:

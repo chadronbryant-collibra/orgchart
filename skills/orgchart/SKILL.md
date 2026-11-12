@@ -25,6 +25,11 @@ Commands: `/orgchart` starts a chart; `/orgchart templates` lists choices;
    title, manager_node_id and function columns. Do not infer wider access or
    fall back to another system without the user's say-so. See
    [data sources](references/data-sources.md) and [privacy](references/privacy.md).
+   Large organizations: one deck holds up to 1,000 people and 120 pages. Big
+   functions get their own overview of sub-leaders, then team pages per
+   sub-leader. If a roster is larger, run
+   `python3 scripts/org_chart_geometry.py plan <roster>.json` to get a split into
+   several decks, and agree the split with the user before building anything.
 4. Normalize locally and show the text outline, status totals, recommendation
    and page plan before any Slides call. Resolve missing or ambiguous links.
 5. List the [templates](references/templates.md) and choose a template and

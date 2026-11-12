@@ -49,6 +49,8 @@ def card_text(card):
     name = 'Open role' if s == 'open' else 'Planned' if s == 'planned' else d.get('name','')
     if s == 'context': name += ' (context)'
     text = name + '\n' + d.get('title','')
+    if card.get('type') == 'group_summary_card' and d.get('lead'):
+        text += '\nLead: ' + d['lead']
     details=d.get('details') or []
     if details: text += '\n' + str(details[0])
     if len(details)>1: text += '\n' + ' · '.join(str(item) for item in details[1:])
