@@ -58,10 +58,63 @@ and plugin zip builds.
 | 9 | CSV import helper for Workday report column names | Small, removes mapping questions. |
 | 10 | Search by name to build a team from several people | Needs a directory source with reporting lines; defer. |
 
+## Live canary (synthetic, 2026-11-12)
+
+A 150-person synthetic roster (four functions of 70, 35, 25 and 19 people)
+was laid out in enterprise overview mode, compiled with `--split-dir`, and
+delivered to a copy of the Collibra template in My Drive
+(`Org chart canary 1.2 drilldown (synthetic)`).
+
+- Layout: 23 pages. Top overview, a sub-leader overview for each function that
+  needed one, a team page per sub-leader, and plain pages for the 19-person
+  function.
+- Request sizes: 413 total requests for the delivered pages (54, 73 and 118 per
+  page). Full-deck page files range from 8.7 KB to 34 KB, 588 KB in all
+  (2,098 requests including 59 template-slide deletions).
+- Delivered pages: the top overview, the Engineering sub-leader overview and
+  one team page with a "Team continues on page N" marker and a contingent
+  card. Each went through one `update_presentation` call, then `cleanup.json`
+  (59 template slides) in a fourth call. All calls succeeded first time.
+  I did not send the other 20 pages, because each full-size page costs about
+  12,000 output tokens to relay by hand through the connector.
+- `verify --summary` on the raw `read_presentation` output
+  (`{"content": {"slides": [...]}}`, read with the exact `fields` mask) for the
+  delivered pages: `PASS 48 FAIL 0`.
+- Thumbnails checked: top overview, sub-leader overview and the team page
+  showed no overlaps, clipped text or missing lines. The contingent card and
+  its legend entry rendered with the dash-dot border.
+- Delivery time: not stopwatch-measured. Connector calls returned within a
+  few seconds each; wall-clock is dominated by the model writing the request
+  arrays, which scales with bytes.
+
+Defects found by the canary and fixed in this branch:
+1. Stray single-card "overview · continued" pages between sub-leader team pages.
+2. "Team continues on page N" printed on grey context cards and on overview
+   cards, pointing at arbitrary pages.
+3. Sub-leader cards showed "Lead: <own name>".
+4. A sub-leader overview with more than six leaders wrapped to a second row
+   whose reporting lines could not be drawn. It now holds up to eight leaders
+   in one row and continues on a further page after that.
+
+Not fixed (polish, low risk): each function with sub-leaders still gets a page
+holding only the function head plus a grey context card of their manager
+(`Engineering`, `Finance`, `Operations` pages in the canary). It exists so
+every person has one real card; folding the head onto the overview would
+remove it but changes the "every person appears once" rule.
+
+Ceiling check. Slides itself is not the limit: pages are independent, and the
+per-page request counts stay near 120. The limit is delivery cost. Full-size
+pages are about 34 KB (roughly 12,000 output tokens) each, so 82 pages (800
+people) would be around 1M output tokens and a 120-page deck more. I did not
+build one. Recommendation: keep 1,000 people and 120 pages as hard ceilings,
+but have the skill warn above about 25 pages and offer `plan` to split by
+function. Reducing requests per card (merge the five styling requests) would
+cut size by roughly a third and is the next worthwhile delivery change.
+
 ## Open items for the joint review
 
-- Confirm the 1,000-person and 120-page ceilings against what Slides handles in a
-  live deck (not tested live here; local geometry and compile only).
-- Confirm "On leave" handling under the privacy rules (hidden unless the user opts in).
-- Decide the version number (feature release, so minor) and the CHANGELOG text.
-- Run one live Slides canary for a drilldown deck and one for `--split-dir` delivery.
+- Decide the soft page warning (about 25 pages) described above.
+- "On leave" stays hidden unless `--allow-sensitive leave`, and the version is
+  1.2.0 (minor), as proposed; both are drafted here pending Chadron's say.
+- Delivering the remaining 20 canary pages is optional; it would only repeat the
+  per-page pattern already verified.
