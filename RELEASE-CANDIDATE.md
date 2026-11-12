@@ -118,6 +118,9 @@ more) needs a different delivery route, for example a native Slides API
 client or Apps Script that takes the geometry directly, so the agent never
 relays page JSON. Only 5 of 23 canary pages were hand-delivered (about 25K
 tokens per large page), which is why the remaining 18 were left undelivered.
+`scripts/deliver_slides.py` now provides that direct route (tested offline with a
+fake transport; not yet run live because it needs a Slides-scoped token that
+Chadron supplies).
 
 ## Open items for the joint review
 

@@ -42,6 +42,10 @@ Commands: `/orgchart` starts a chart; `/orgchart templates` lists choices;
 7. Offer to update the deck later, compare a scenario or export. See [statuses](references/statuses.md)
    and [model and cost guidance](references/models-and-cost.md).
 
+## Optional direct delivery
+
+When the connector relay is too slow for a big deck, `scripts/deliver_slides.py <split-dir> --presentation-id <id>` posts the `--split-dir` files straight to the Slides API, skips pages already in the deck, reorders slides to page order and sends `cleanup.json` last. It needs a Slides-scoped OAuth access token in `ORGCHART_SLIDES_TOKEN`, which the user supplies; never ask for or print one in chat. A failed page stops the run and is never replayed.
+
 ## Talk to the user
 
 Many users are not technical. Lead with the outcome, use plain words, and say

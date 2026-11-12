@@ -14,6 +14,8 @@
 - `--title` option and page titles taken from the top leader.
 - Compact, per-page request files (`--split-dir`), and `verify` that reads the
   Slides connector's raw output (`--summary` shortens the report).
+- `deliver_slides.py`: optional direct delivery of a `--split-dir` compile to the
+  Slides API (resumable, reorders pages, cleanup last, no replay of failed writes).
 - Guidance that self-service Workday covers only your own reporting line.
 
 ### Changed
