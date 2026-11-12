@@ -425,6 +425,7 @@ def _card(person: dict[str, Any], box: dict[str, float], page_id: str, role: str
             "title": person["title"],
             "function": person["function"],
             "kind": person.get("kind", "person"),
+            "worker_type": person.get("worker_type", "unknown"),
             "status": person.get("status", "filled"),
             "statusLabel": person.get("statusLabel", ""),
             "context": person.get("context", False),

@@ -37,18 +37,26 @@ def line_id(line): return ident(line.get('google_slides_object_id') or line['sta
 def status(card):
     d=card.get('data',{})
     return 'context' if d.get('context') or card.get('type') in ('context_card','repeated_context') else d.get('status', 'open' if d.get('kind') == 'open_role' else 'filled')
+def contingent(card):
+    d=card.get('data',{})
+    return d.get('kind') == 'contractor' or d.get('worker_type') == 'contingent'
+
 def card_text(card):
     d=card.get('data',{}); s=status(card)
     name = 'Open role' if s == 'open' else 'Planned' if s == 'planned' else d.get('name','')
     if s == 'context': name += ' (context)'
     text = name + '\n' + d.get('title','')
+    details=d.get('details') or []
+    if details: text += '\n' + str(details[0])
+    if len(details)>1: text += '\n' + ' · '.join(str(item) for item in details[1:])
+    if contingent(card): text += '\nContingent'
     if s == 'other': text += '\n' + d.get('statusLabel','')
     if d.get('continuation_hint'): text += '\n' + d['continuation_hint']
     return text
 
 def compile_requests(geometry, theme, layout_id=None, existing=None, chunk=400, connector_category="auto"):
     if chunk < 1: raise ValueError('--chunk must be positive')
-    palette=THEMES[theme]; requests=[]; used=set(); count={'pages':0,'cards':0,'connectors':0,'tables':0,'legend_items':0}
+    palette=THEMES[theme]; requests=[]; used=set(); count={'pages':0,'cards':0,'connectors':0,'tables':0,'legend_items':0,'contingent_legend_items':0}
     def reserve(obj):
         if obj in used: raise ValueError('Duplicate object ID: '+obj)
         used.add(obj); return obj
@@ -96,14 +104,23 @@ def compile_requests(geometry, theme, layout_id=None, existing=None, chunk=400, 
                 requests.append({'updateTableCellProperties':{'objectId':obj,'tableRange':{'location':{'rowIndex':0,'columnIndex':0},'rowSpan':1,'columnSpan':3},'tableCellProperties':{'tableCellBackgroundFill':{'solidFill':{'color':color('F0F2F3')}}},'fields':'tableCellBackgroundFill'}})
                 count['tables']+=1
         lookup={e['stable_name']:card_id(e) for e in cards(page)}
+        # Fit once per page and card type so peers use the same typography.
+        sizes={}
+        for e in cards(page):
+            kind='summary' if e.get('type') == 'group_summary_card' else 'person'
+            lines=card_text(e).split('\n'); limit=30*e['box']['w']/2
+            def font(base, line): return round(max(8, min(base, base*limit/max(len(line), 1))), 1)
+            fitted=(font(10, lines[0]), min((font(9, line) for line in lines[1:]), default=9))
+            previous=sizes.get(kind, fitted)
+            sizes[kind]=tuple(min(a,b) for a,b in zip(previous, fitted))
         for e in cards(page):
             s=status(e)
             if s not in palette: raise ValueError('Unknown card status: '+s)
             fill,border,dash=palette[s]; box=e['box']
-            text=card_text(e); lines=text.split('\n'); limit=30*box['w']/2
-            def font(base, line): return round(max(8, min(base, base*limit/max(len(line), 1))), 1)
-            size=min(font(9, line) for line in lines[1:]) if len(lines)>1 else 9
-            shape(pid,lookup[e['stable_name']],box,text,fill,border,dash,size,palette['muted'],True,name_size=font(10, lines[0]))
+            if contingent(e) and s == 'filled':
+                fill,border,_=palette['other']; dash='LONG_DASH_DOT'
+            name_size,size=sizes['summary' if e.get('type') == 'group_summary_card' else 'person']
+            shape(pid,lookup[e['stable_name']],box,card_text(e),fill,border,dash,size,palette['muted'],True,name_size=name_size)
             count['cards']+=1
         for line in page.get('connectors',[]):
             lid=reserve(line_id(line)); seg=line['segments']; x1,y1=seg[0]['x1'],seg[0]['y1']; x2,y2=seg[-1]['x2'],seg[-1]['y2']
@@ -116,10 +133,18 @@ def compile_requests(geometry, theme, layout_id=None, existing=None, chunk=400, 
             shape(pid,ident(page['id']+'-legend-matrix'),{'x':9.75,'y':7.02,'w':3.1,'h':0.27},'····  Dotted line: works with','FFFFFF','FFFFFF',fontsize=9,ink=palette['matrix'],shape_type='TEXT_BOX',title_style=True)
             count['legend_items']+=1
         present={status(e) for e in cards(page) if e.get('type') != 'group_summary_card'}
-        for i,s in enumerate(x for x in ('filled','open','planned','resigned','other','context') if x in present):
-            fill,border,dash=palette[s]
-            shape(pid,ident(page['id']+'-legend-'+s),{'x':0.42+i*1.75,'y':7.02,'w':1.65,'h':0.27},s.title(),fill,border,dash,9,palette['muted'] if s=='context' else None,shape_type='ROUND_RECTANGLE')
-            count['legend_items']+=1
+        legend=[s for s in ('filled','open','planned','resigned','other','context') if s in present]
+        if any(contingent(e) for e in cards(page)): legend.append('contingent')
+        # Leave the matrix legend at x=9.75 clear, even with all seven items.
+        step=min(1.75, (9.75-0.42)/max(len(legend), 1))
+        for i,s in enumerate(legend):
+            if s == 'contingent':
+                fill,border,_=palette['other']; dash='LONG_DASH_DOT'
+            else:
+                fill,border,dash=palette[s]
+            shape(pid,ident(page['id']+'-legend-'+s),{'x':0.42+i*step,'y':7.02,'w':step-0.10,'h':0.27},s.title(),fill,border,dash,9,palette['muted'] if s=='context' else None,shape_type='ROUND_RECTANGLE')
+            # Keep the existing status/relationship count compatible for callers.
+            count['contingent_legend_items' if s == 'contingent' else 'legend_items']+=1
     for slide in (existing or {}).get('slides',[]):
         obj=slide['objectId']
         if obj in used: raise ValueError('Existing slide ID collides with a new object: '+obj)

@@ -127,6 +127,45 @@ def _text(value: Any) -> str:
     return "" if value is None else str(value).strip()
 
 
+DESCRIPTORS = {
+    "on leave", "leave of absence", "contingent worker", "contingent",
+    "contractor", "terminated", "inactive", "pending start", "retired",
+}
+
+
+def _split_descriptors(name: str) -> tuple[str, list[str]]:
+    """Remove only recognized trailing Workday descriptors, in source order."""
+    clean = name.strip()
+    descriptors: list[str] = []
+    while True:
+        match = re.search(r"\s*\(([^()]*)\)$", clean)
+        if not match or match.group(1).casefold() not in DESCRIPTORS:
+            break
+        descriptors.append(match.group(1).casefold())
+        clean = clean[:match.start()].rstrip()
+    return clean, list(reversed(descriptors))
+
+
+def _descriptor_fields(
+    name: str, status: str, worker_type: str, details: list[str],
+    allowed: set[str], counts: dict[str, int],
+) -> tuple[str, str, str]:
+    name, descriptors = _split_descriptors(name)
+    counts["descriptors_stripped"] += len(descriptors)
+    for descriptor in descriptors:
+        if descriptor in {"contractor", "contingent", "contingent worker"} and not worker_type:
+            worker_type = "contingent"
+        elif descriptor in {"terminated", "inactive", "retired"} and not status:
+            status = "resigned"
+        elif descriptor in {"on leave", "leave of absence"}:
+            if "leave" in allowed:
+                if "On leave" not in details:
+                    details.append("On leave")
+            else:
+                counts["descriptor_leave_dropped"] += 1
+    return name, status or "filled", worker_type or "unknown"
+
+
 def _iso_date(value: Any, field: str) -> str | None:
     text = _text(value)
     if not text:
@@ -345,6 +384,7 @@ def _normalize_flat(
     relationships: list[dict[str, Any]] = []
     effective_dates: list[str | None] = []
     marker_sensitive: set[str] = set()
+    descriptor_counts = {"descriptors_stripped": 0, "descriptor_leave_dropped": 0}
     for index, row in enumerate(rows, start=1):
         node_id = _text(row.get("node_id"))
         name = _text(row.get("display_name"))
@@ -361,6 +401,12 @@ def _normalize_flat(
         location = _text(row.get("location"))
         if location:
             details.insert(0, location)
+        name, status, worker_type = _descriptor_fields(
+            name, _text(row.get("status")), _text(row.get("worker_type")),
+            details, allowed, descriptor_counts,
+        )
+        if not name:
+            raise NormalizationError(f"Flat row {index} has no name after descriptors.")
         source_as_of = _iso_date(row.get("source_as_of"), f"row {index} source_as_of")
         effective_dates.append(source_as_of)
         person = {
@@ -369,10 +415,10 @@ def _normalize_flat(
             "title": title,
             "manager_id": _text(row.get("manager_node_id")) or None,
             "function": _text(row.get("function")) or "Unassigned",
-            "kind": _kind(row.get("node_type"), row.get("status"), row.get("worker_type"), False),
-            "status": _text(row.get("status")).casefold() or "filled",
+            "kind": _kind(row.get("node_type"), status, worker_type, False),
+            "status": status.casefold(),
             "statusLabel": _text(row.get("statusLabel") or row.get("status_label")),
-            "worker_type": _text(row.get("worker_type")).casefold() or "unknown",
+            "worker_type": worker_type.casefold(),
             "details": details,
             "markers": markers,
             "order": _integer(row.get("sort_order"), f"row {index} sort_order"),
@@ -389,6 +435,7 @@ def _normalize_flat(
         "unknown_columns": unknown_columns,
         "sensitive_used": sorted(sensitive_used | marker_sensitive),
         "person_records": None,
+        **descriptor_counts,
     }
 
 
@@ -472,12 +519,13 @@ def _normalize_canonical(
     organization_date = _iso_date(organization.get("asOfDate"), "organization.asOfDate")
     effective_dates: list[str | None] = []
     marker_sensitive: set[str] = set()
+    descriptor_counts = {"descriptors_stripped": 0, "descriptor_leave_dropped": 0}
     output_people: list[dict[str, Any]] = []
     for position_id, position in position_by_id.items():
         person_id = _text(position.get("personId"))
         person = person_by_id.get(person_id) if person_id else None
-        status = _text(position.get("status")) or "filled"
-        worker_type = _text(position.get("workerType")) or "unknown"
+        status = _text(position.get("status"))
+        worker_type = _text(position.get("workerType"))
         markers = _list_value(position.get("markers"), f"position {position_id} markers")
         marker_sensitive.update(_check_sensitive_markers(markers, allowed))
         source_as_of = _iso_date(position.get("sourceAsOf"), f"position {position_id} sourceAsOf") or organization_date
@@ -499,6 +547,11 @@ def _normalize_canonical(
             display_name = "Open"
         else:
             display_name = "Unknown"
+        display_name, status, worker_type = _descriptor_fields(
+            display_name, status, worker_type, details, allowed, descriptor_counts,
+        )
+        if not display_name:
+            raise NormalizationError(f"Position {position_id!r} has no name after descriptors.")
         title = _text(position.get("title"))
         if not title:
             raise NormalizationError(f"Position {position_id!r} is missing title.")
@@ -533,6 +586,7 @@ def _normalize_canonical(
         "unknown_columns": unknown_position_keys,
         "sensitive_used": sorted(sensitive_used | marker_sensitive),
         "person_records": len(people_source),
+        **descriptor_counts,
     }
 
 
@@ -540,6 +594,7 @@ def normalize_source(
     source: Any,
     *,
     source_kind: str,
+    title: str | None = None,
     source_label: str | None = None,
     source_system: str | None = None,
     connector_name: str | None = None,
@@ -550,6 +605,7 @@ def normalize_source(
     allow_sensitive: Iterable[str] = (),
     allow_disconnected: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
+    title_override = _text(title)
     allowed = _allowed_sensitive(allow_sensitive)
     retrieved = _iso_timestamp(retrieved_at, "retrieved_at")
     declared_effective = _iso_date(effective_date, "effective_date")
@@ -590,6 +646,11 @@ def normalize_source(
             raise NormalizationError("The other status needs a statusLabel describing it.")
         person["headcount_impact"] = {"filled": 1, "open": 0, "planned": 0, "resigned": -1, "other": 0}[status]
     roots, component_count = _validate_graph(people, relationships, allow_disconnected)
+    if source_kind in {"flat_json", "csv"} and len(roots) == 1:
+        root_name = next(person["name"] for person in people if person["id"] == roots[0])
+        possessive = "'" if root_name.casefold().endswith("s") else "'s"
+        title = f"{root_name}{possessive} organization"
+    title = title_override or title
     people = _stable_sort_people(people)
     relationships = sorted(
         relationships,
@@ -635,6 +696,8 @@ def normalize_source(
         },
         "mapping": {
             "input_model": "canonical" if source_kind == "canonical_json" else "flat",
+            "descriptors_stripped": metadata["descriptors_stripped"],
+            "descriptor_leave_dropped": metadata["descriptor_leave_dropped"],
             # Unknown source fields are counted rather than copied because a
             # column label can itself contain a person's name or query value.
             "unknown_field_count": len(metadata.get("unknown_columns") or []),
@@ -788,6 +851,7 @@ def _parser() -> argparse.ArgumentParser:
     normalize.add_argument("--format", choices=("auto", "csv", "json"), default="auto")
     normalize.add_argument("--output", type=Path, required=True, help="New render-payload JSON path.")
     normalize.add_argument("--receipt", type=Path, required=True, help="New non-PII receipt JSON path.")
+    normalize.add_argument("--title", help="Override the chart title.")
     normalize.add_argument("--source-label")
     normalize.add_argument("--source-system")
     normalize.add_argument("--connector-name")
@@ -813,6 +877,7 @@ def main(argv: list[str] | None = None) -> int:
             render, receipt = normalize_source(
                 source,
                 source_kind=source_kind,
+                title=args.title,
                 source_label=args.source_label,
                 source_system=args.source_system,
                 connector_name=args.connector_name,
