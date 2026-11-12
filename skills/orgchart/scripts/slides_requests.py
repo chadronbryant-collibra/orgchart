@@ -26,7 +26,8 @@ def ident(value):
     return 'org_' + safe[:33] + '_' + hashlib.sha256(value.encode()).hexdigest()[:12]
 
 def _r(value, digits=2):
-    return round(value, digits)
+    value = round(value, digits)
+    return int(value) if value == int(value) else value
 
 def color(value):
     return {'rgbColor': {k:_r(int(value[i:i+2],16)/255, 4) for k,i in [('red',0),('green',2),('blue',4)]}}
@@ -69,11 +70,19 @@ def compile_requests(geometry, theme, layout_id=None, existing=None, chunk=400, 
         reserve(obj)
         requests.append({'createShape':{'objectId':obj,'shapeType':shape_type,'elementProperties':props(page,box)}})
         requests.append({'insertText':{'objectId':obj,'insertionIndex':0,'text':text}})
-        properties={'shapeBackgroundFill':{'solidFill':{'color':color(fill)}},'outline':{'outlineFill':{'solidFill':{'color':color(border)}},'weight':{'magnitude':1,'unit':'PT'},'dashStyle':dash},'contentAlignment':'MIDDLE'}
+        properties={'shapeBackgroundFill':{'solidFill':{'color':color(fill)}},'outline':{'outlineFill':{'solidFill':{'color':color(border)}},**({'dashStyle':dash} if dash != 'SOLID' else {})},'contentAlignment':'MIDDLE'}
         if title_style: properties.update(shapeBackgroundFill={'propertyState':'NOT_RENDERED'},outline={'propertyState':'NOT_RENDERED'})
         requests.append({'updateShapeProperties':{'objectId':obj,'shapeProperties':properties,'fields':'shapeBackgroundFill,outline,contentAlignment'}})
-        requests.append({'updateTextStyle':{'objectId':obj,'textRange':{'type':'ALL'},'style':{'fontFamily':'Arial','fontSize':{'magnitude':_r(fontsize),'unit':'PT'},'foregroundColor':{'opaqueColor':color(ink or palette['ink'])}},'fields':'fontFamily,fontSize,foregroundColor'}})
-        if bold_first:
+        style={'fontFamily':'Arial','fontSize':{'magnitude':_r(fontsize),'unit':'PT'},'foregroundColor':{'opaqueColor':color(ink or palette['ink'])}}
+        # A single-line heading's first run is the entire text. Apply its
+        # final style once; multiline headings still need the range override.
+        whole_bold=bold_first and bool(text) and '\n' not in text
+        if whole_bold:
+            style['bold']=True
+            if name_size is not None:
+                style.update(fontSize={'magnitude':_r(name_size),'unit':'PT'},foregroundColor={'opaqueColor':color(palette['ink'])})
+        requests.append({'updateTextStyle':{'objectId':obj,'textRange':{'type':'ALL'},'style':style,'fields':','.join(style)}})
+        if bold_first and not whole_bold:
             # Slides indexes UTF-16 code units, not Python code points.
             end=len(text.split('\n',1)[0].encode('utf-16-le'))//2
             if end: requests.append({'updateTextStyle':{'objectId':obj,'textRange':{'type':'FIXED_RANGE','startIndex':0,'endIndex':end},'style':dict({'bold':True}, **({'fontSize':{'magnitude':_r(name_size),'unit':'PT'},'foregroundColor':{'opaqueColor':color(palette['ink'])}} if name_size is not None else {})), 'fields':'bold,fontSize,foregroundColor' if name_size is not None else 'bold'}})
@@ -127,13 +136,20 @@ def compile_requests(geometry, theme, layout_id=None, existing=None, chunk=400, 
             name_size,size=sizes['summary' if e.get('type') == 'group_summary_card' else 'person']
             shape(pid,lookup[e['stable_name']],box,card_text(e),fill,border,dash,size,palette['muted'],True,name_size=name_size)
             count['cards']+=1
-        for line in page.get('connectors',[]):
+        connector_ids=[]
+        # Batch SEND_TO_BACK retains relative z-order, so create lines in the
+        # reverse order of the old individual SEND_TO_BACK operations.
+        for line in reversed(page.get('connectors',[])):
             lid=reserve(line_id(line)); seg=line['segments']; x1,y1=seg[0]['x1'],seg[0]['y1']; x2,y2=seg[-1]['x2'],seg[-1]['y2']
             ep={'pageObjectId':pid,'size':{'width':{'magnitude':_r(max(abs(x2-x1)*72,0.01)),'unit':'PT'},'height':{'magnitude':_r(max(abs(y2-y1)*72,0.01)),'unit':'PT'}},'transform':{'scaleX':-1 if x2<x1 else 1,'scaleY':-1 if y2<y1 else 1,'translateX':_r(x1*72),'translateY':_r(y1*72),'unit':'PT'}}
             requests.append({'createLine':{'objectId':lid,'lineCategory':line.get('native_category','BENT') if connector_category == 'auto' else connector_category,'elementProperties':ep}})
-            lp={'startConnection':{'connectedObjectId':lookup[line['from']],'connectionSiteIndex':line['google_slides_from_site_index']},'endConnection':{'connectedObjectId':lookup[line['to']],'connectionSiteIndex':line['google_slides_to_site_index']},'lineFill':{'solidFill':{'color':color(palette['matrix'] if line.get('type') == 'matrix_relationship' else (palette['ink'] if theme == 'collibra-2026' else palette['muted']))}},'weight':{'magnitude':1,'unit':'PT'},'dashStyle':'DOT' if line.get('line_style')=='dotted' or line.get('type')=='dotted_line' else 'SOLID','startArrow':'NONE','endArrow':'NONE'}
+            lp={'startConnection':{'connectedObjectId':lookup[line['from']],'connectionSiteIndex':line['google_slides_from_site_index']},'endConnection':{'connectedObjectId':lookup[line['to']],'connectionSiteIndex':line['google_slides_to_site_index']},'lineFill':{'solidFill':{'color':color(palette['matrix'] if line.get('type') == 'matrix_relationship' else (palette['ink'] if theme == 'collibra-2026' else palette['muted']))}}}
+            if line.get('line_style')=='dotted' or line.get('type')=='dotted_line': lp['dashStyle']='DOT'
             requests.append({'updateLineProperties':{'objectId':lid,'lineProperties':lp,'fields':','.join(lp)}})
-            requests.append({'updatePageElementsZOrder':{'pageElementObjectIds':[lid],'operation':'SEND_TO_BACK'}}); count['connectors']+=1
+            connector_ids.append(lid); count['connectors']+=1
+        if connector_ids:
+            # All lines must exist before moving them behind the cards.
+            requests.append({'updatePageElementsZOrder':{'pageElementObjectIds':connector_ids,'operation':'SEND_TO_BACK'}})
         if any(line.get('type') == 'matrix_relationship' for line in page.get('connectors', [])):
             shape(pid,ident(page['id']+'-legend-matrix'),{'x':9.75,'y':7.02,'w':3.1,'h':0.27},'····  Dotted line: works with','FFFFFF','FFFFFF',fontsize=9,ink=palette['matrix'],shape_type='TEXT_BOX',title_style=True)
             count['legend_items']+=1
