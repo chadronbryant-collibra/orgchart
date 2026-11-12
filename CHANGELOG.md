@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.2.0
+
+### Added
+
+- Large organizations: one deck now holds up to 1,000 people and 120 pages.
+  Big functions get an overview of their sub-leaders, then team pages per
+  sub-leader, repeated for large sub-teams.
+- `plan` command that splits a roster over those limits into several decks.
+- Function lead names on overview cards.
+- Location and metadata lines, and a "Contingent" marker with a legend entry,
+  on cards.
+- `--title` option and page titles taken from the top leader.
+- Compact, per-page request files (`--split-dir`), and `verify` that reads the
+  Slides connector's raw output (`--summary` shortens the report).
+- Guidance to build large decks in stages: overview first, then one function at a time.
+- Guidance that self-service Workday covers only your own reporting line.
+
+### Changed
+
+- Workday suffixes such as "(On Leave)" no longer appear in names. "On leave"
+  shows only when the roster is built with `--allow-sensitive leave`.
+- Card text uses one size per card type on each page.
+- "Team continues on page N" is correct when overview pages are inserted.
+
 ## 1.1.2
 
 ### Fixed

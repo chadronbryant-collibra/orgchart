@@ -89,7 +89,7 @@ class TeamPageTests(unittest.TestCase):
         for name, _, result in self.layouts():
             with self.subTest(roster=name):
                 self.assertTrue(geometry.validate_layout(result)['valid'])
-                self.assertLessEqual(result['page_count'], 30)
+                self.assertLessEqual(result['page_count'], geometry.MAX_PAGES)
 
     def test_every_same_page_reporting_edge_has_a_connector(self):
         for name, data, result in self.layouts():

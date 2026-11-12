@@ -21,6 +21,8 @@ from typing import Any, Iterable
 
 
 VERSION = "1.3.0"
+MAX_PEOPLE = 1000
+MAX_PAGES = 120
 MODES = (
     "compact_hierarchy",
     "leadership_bands",
@@ -200,14 +202,14 @@ def _google_straight_connector_hits_non_endpoint_card(
     return False
 
 
-def _validate_input(data: dict[str, Any]) -> dict[str, dict[str, Any]]:
+def _validate_input(data: dict[str, Any], *, enforce_cap: bool = True) -> dict[str, dict[str, Any]]:
     if not isinstance(data, dict):
         raise GeometryError("Input must be a JSON object.")
     people = data.get("people")
     if not isinstance(people, list) or not people:
         raise GeometryError("Input must contain a non-empty 'people' array.")
-    if len(people) > 200:
-        raise GeometryError("This chart supports up to 200 people or positions. Split the roster into smaller charts.")
+    if enforce_cap and len(people) > MAX_PEOPLE:
+        raise GeometryError(f"This chart supports up to {MAX_PEOPLE} people or positions. Use the plan command to split the roster.")
     if len(data.get("relationships") or []) > 8:
         raise GeometryError("This chart supports up to 8 matrix links. Use a separate relationship list for the rest.")
     by_id: dict[str, dict[str, Any]] = {}
@@ -302,12 +304,12 @@ def recommend(data: dict[str, Any]) -> dict[str, Any]:
     if relationship_count:
         preferred = "matrix_relationships"
         rationale = "The input contains explicit non-hierarchical relationships."
-    elif len(roots) == 1 and direct_reports > 8:
-        preferred = "compact_hierarchy"
-        rationale = "A wide team stays clearest as a simple tree; extra branches continue on their own pages with reporting lines kept."
     elif len(people) >= 35:
         preferred = "enterprise_overview"
         rationale = "The roster is too large for a single readable chart."
+    elif len(roots) == 1 and direct_reports > 8:
+        preferred = "compact_hierarchy"
+        rationale = "A wide team stays clearest as a simple tree; extra branches continue on their own pages with reporting lines kept."
     elif len(people) <= 14 and max_depth <= 1:
         preferred = "leadership_bands"
         rationale = "The roster is a shallow leadership cohort."
@@ -318,12 +320,16 @@ def recommend(data: dict[str, Any]) -> dict[str, Any]:
         preferred = "compact_hierarchy"
         rationale = "The roster fits a conventional manager hierarchy."
 
+    scale = "Large organization: adaptive function and branch overviews preserve navigation." if len(people) > 200 else None
+    if scale:
+        rationale += " Scale: " + scale
     return {
         "version": VERSION,
         "recommended_mode": preferred,
         "rationale": rationale,
         "facts": {
             "people": len(people),
+            **({"scale": scale} if scale else {}),
             "root_count": len(roots),
             "root_direct_reports": direct_reports,
             "function_count": function_count,
@@ -425,6 +431,7 @@ def _card(person: dict[str, Any], box: dict[str, float], page_id: str, role: str
             "title": person["title"],
             "function": person["function"],
             "kind": person.get("kind", "person"),
+            "worker_type": person.get("worker_type", "unknown"),
             "status": person.get("status", "filled"),
             "statusLabel": person.get("statusLabel", ""),
             "context": person.get("context", False),
@@ -1042,19 +1049,29 @@ def _team_page_people(page_ids: list[str], by_id: dict[str, dict[str, Any]], ord
     return context + [by_id[person_id] for person_id in page_ids]
 
 
-def _enterprise_pages(data: dict[str, Any], by_id: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
-    groups = _function_groups(by_id)
-    roots = [person for person in by_id.values() if not person["manager_id"]]
-    root = roots[0] if len(roots) == 1 else None
-    if root:
-        groups = [(function, members) for function, members in groups
-                  if not (len(members) == 1 and members[0]["id"] == root["id"])]
-    pages: list[dict[str, Any]] = []
-    overview_chunks = _chunk(groups, 12) or [[]]
+def _group_heads(members, order):
+    ids = {person["id"] for person in members}
+    return sorted((person for person in members if person["manager_id"] not in ids),
+                  key=lambda person: order[person["id"]])
+
+
+def _lead_label(heads):
+    if not heads:
+        return ""
+    head = heads[0]
+    name = "Open role" if head.get("kind") == "open_role" or head.get("status") == "open" else head["name"]
+    return name + (f" +{len(heads) - 1} more" if len(heads) > 1 else "")
+
+
+def _overview_grid(data, pages, groups, root, order, title, section,
+                   level=0, parent_page=None, root_context=False, branch=False):
+    """Shared 12-summary grid and safe root-to-summary connector routing."""
+    # A leader row of up to 8 keeps every reporting line drawable; wrapped rows cannot be connected.
+    overview_chunks = _chunk(groups, 8 if (branch and root) else 12) or [[]]
     for overview_index, group_chunk in enumerate(overview_chunks, start=1):
-        page = _new_page(data, len(pages) + 1, "enterprise-overview", (data.get("title") or "Enterprise organization") + (" · continued" if overview_index > 1 else ""))
+        page = _new_page(data, len(pages) + 1, section, title + (" · continued" if overview_index > 1 else ""))
         content = page["content_bounds"]
-        columns = min(6 if root else 4, len(group_chunk)) or 1
+        columns = min((8 if branch else 6) if root else 4, len(group_chunk)) or 1
         rows = math.ceil(len(group_chunk) / columns) or 1
         card_w = (content["w"] - GAP * (columns - 1)) / columns
         summary_top = content["y"]
@@ -1065,6 +1082,13 @@ def _enterprise_pages(data: dict[str, Any], by_id: dict[str, dict[str, Any]]) ->
             card_h = min(1.06, (content["h"] - lead - GAP * (rows - 1)) / rows)
             block_top = _centered_grid_top({**content, "h": content["h"] - lead}, rows, card_h)
             root_card = _card(root, _rect(content["x"] + (content["w"] - root_w) / 2, block_top, root_w, root_h), page["id"])
+            if branch:
+                root_card = _summary_card(root["id"], root["name"], root["title"], root_card["box"], page["id"])
+                total = 1 + sum(len(members) for _, members in groups)
+                root_card["data"]["title"] = f"{root['title']} · {total} people"
+                root_card["data"]["lead"] = ""
+            else:
+                root_card["data"]["context"] = root_context or overview_index > 1
             page["elements"].append(root_card)
             summary_top = block_top + lead
             top = summary_top
@@ -1078,6 +1102,11 @@ def _enterprise_pages(data: dict[str, Any], by_id: dict[str, dict[str, Any]]) ->
             filled = sum(1 for member in members if member.get("kind", "person") != "open_role")
             open_roles = len(members) - filled
             element = _summary_card(function, function, f"{_count_label(len(members), 'position', 'positions')} · {open_roles} open", _rect(content["x"] + column * (card_w + GAP), top + row * (card_h + GAP), card_w, card_h), page["id"])
+            heads = _group_heads(members, order)
+            element["data"]["lead"] = _lead_label(heads)
+            if branch:
+                leader = members[0]
+                element["data"].update(name=leader["name"], title=f"{leader['title']} · {len(members)} people", lead="")
             page["elements"].append(element)
             row_elements[row].append(element)
         for row, elements in row_elements.items():
@@ -1112,34 +1141,220 @@ def _enterprise_pages(data: dict[str, Any], by_id: dict[str, dict[str, Any]]) ->
                         _google_straight_connector_hits_non_endpoint_card(connector, page["elements"])):
                     page["connectors"].append(connector)
         page["split_reason"] = "Enterprise mode always separates summary from team pages."
+        page["navigation_level"] = min(level, 2)
+        page["parent_page"] = parent_page
         pages.append(page)
+
+
+def _enterprise_pages(data: dict[str, Any], by_id: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+    groups = _function_groups(by_id)
+    roots = [person for person in by_id.values() if not person["manager_id"]]
+    root = roots[0] if len(roots) == 1 else None
+    root_only = bool(root and sum(p["function"] == root["function"] for p in by_id.values()) == 1)
+    if root_only:
+        groups = [(function, members) for function, members in groups if members[0]["id"] != root["id"]]
+    pages = []
     order = _preorder(by_id)
-    for function, members in groups:
-        team_pages = _pack_team_pages(members, by_id, order)
-        placement = {person_id: index for index, ids in enumerate(team_pages) for person_id in ids}
-        for part, page_ids in enumerate(team_pages, start=1):
-            detail = _new_page(data, len(pages) + 1, f"enterprise-{function}", f"{function}{' · continued' if part > 1 else ''}")
-            _layout_levels(data, detail, _team_page_people(page_ids, by_id, order))
-            for card in detail["elements"]:
-                person_id = card.get("node_id")
-                if person_id and not card["data"].get("context") and any(
-                    member["manager_id"] == person_id and placement[member["id"]] > part - 1
-                    for member in members
-                ):
-                    later = min(placement[member["id"]] for member in members
-                                if member["manager_id"] == person_id and placement[member["id"]] > part - 1)
-                    card["data"]["continuation_hint"] = f"Team continues on page {len(pages) - part + 1 + later + 1}"
-            detail["split_reason"] = (
-                f"Team pages allow {TEAM_PAGE_UNITS} cards across and {TEAM_PAGE_ROWS} rows; "
-                "grey context cards show managers who appear on another page."
-            )
+    _overview_grid(data, pages, groups, root, order, data.get("title") or "Enterprise organization",
+                   "enterprise-overview", root_context=not root_only)
+    top_pages = {function: page["index"] for page in pages for function, _ in groups
+                 if any(e.get("group_id") == function for e in page["elements"])}
+    children = _children(by_id)
+
+    def subtree(head, allowed):
+        ids, stack = [], [head["id"]]
+        while stack:
+            node = stack.pop()
+            if node not in allowed:
+                continue
+            ids.append(node)
+            stack.extend(reversed([p["id"] for p in children[node]]))
+        return [by_id[node] for node in ids]
+
+    team_titles = set()
+
+    def plain(members, title, function, parent, level):
+        packed = _pack_team_pages(members, by_id, order)
+        for part, ids in enumerate(packed):
+            # Depth-limited or extremely wide leaf cohorts still get a navigation
+            # checkpoint before each subsequent pair of team pages.
+            recent = part
+            if recent >= 2 and recent % 2 == 0:
+                upcoming = {node for chunk in packed[part:part + 2] for node in chunk}
+                heads = _group_heads([by_id[node] for node in upcoming], order)
+                _overview_grid(data, pages, [(p["id"], subtree(p, upcoming)) for p in heads],
+                               None, order, title + " overview · continued", "function-overview",
+                               level, parent, branch=True)
+                parent = pages[-1]["index"]
+            detail = _new_page(data, len(pages) + 1, f"enterprise-{function}", title + (" · continued" if part or title in team_titles else ""))
+            _layout_levels(data, detail, _team_page_people(ids, by_id, order))
+            detail["navigation_level"] = min(level + 1, 2)
+            detail["parent_page"] = parent
+            detail["split_reason"] = (f"Team pages allow {TEAM_PAGE_UNITS} cards across and {TEAM_PAGE_ROWS} rows; "
+                                      "grey context cards show managers who appear on another page.")
             pages.append(detail)
+            team_titles.add(title)
+
+    def drill(members, title, function, parent, depth):
+        packed = _pack_team_pages(members, by_id, order)
+        if (len(packed) <= 2 and len(members) <= TEAM_PAGE_UNITS * TEAM_PAGE_ROWS) or depth >= 4:
+            plain(members, title, function, parent, depth)
+            return
+        allowed = {p["id"] for p in members}
+        heads = _group_heads(members, order)
+        head = heads[0] if len(heads) == 1 else None
+        branches = [subtree(p, allowed) for p in (children[head["id"]] if head else heads) if p["id"] in allowed]
+        # Include the head as its own summary; its descendants are navigated by
+        # the direct-report summaries and placed only in their own subtrees.
+        summaries = [(b[0]["id"], b) for b in branches]
+        first = len(pages)
+        _overview_grid(data, pages, summaries, head, order, title + " overview", "function-overview",
+                       depth + 1, parent, branch=True)
+        overview = pages[first]["index"]
+        # Leaf siblings share a pack (a wide leader must not need one page
+        # per report). Every non-leaf branch gets its own named drilldown.
+        pending = ([head] if head else []) + [b[0] for b in branches if len(b) == 1]
+        if pending:
+            plain(pending, title, function, overview, depth + 1)
+        for branch_members in branches:
+            if len(branch_members) > 1:
+                drill(branch_members, title + " · " + branch_members[0]["name"], function, overview, depth + 1)
+
+    for function, members in groups:
+        drill(members, function, function, top_pages[function], 0)
     return pages
 
 
-def layout(data: dict[str, Any], mode_override: str | None = None) -> dict[str, Any]:
-    by_id = _validate_input(data)
-    mode = mode_override or (data.get("options") or {}).get("mode") or recommend(data)["recommended_mode"]
+def _finalize_navigation(pages, by_id):
+    """Resolve cross-page hints only after every overview and team page exists."""
+    placement = {e["node_id"]: p["index"] for p in pages for e in p["elements"]
+                 if e.get("node_id") and not e.get("data", {}).get("context")}
+    children = _children(by_id)
+    for page in pages:
+        for card in page["elements"]:
+            node = card.get("node_id")
+            if not node:
+                continue
+            card["data"].pop("continuation_hint", None)
+            # Context cards and overview pages already navigate through their
+            # own cards, so a hint there points at an arbitrary page.
+            if card["data"].get("context") or page["section"].endswith("overview"):
+                continue
+            destinations = [placement[p["id"]] for p in children[node]
+                            if p["id"] in placement and placement[p["id"]] != page["index"]]
+            if destinations:
+                card["data"]["continuation_hint"] = f"Team continues on page {min(destinations)}"
+
+
+def estimate_pages(data: dict[str, Any]) -> int:
+    """Count pages using the real layout, without enforcing deck ceilings."""
+    return layout(data, _estimate=True)["page_count"]
+
+
+def _part_input(data, by_id, ids, title):
+    """Add marked, context-free copies of immediate off-part managers."""
+    selected = set(ids)
+    managers = {by_id[node]["manager_id"] for node in selected} - selected - {None}
+    people = []
+    for person in _ordered_people(by_id):
+        node = person["id"]
+        if node not in selected | managers:
+            continue
+        copy = deepcopy(person)
+        copy.pop("context", None)
+        if node in managers:
+            copy["manager_id"] = None
+            copy["duplicated_root"] = True
+        elif copy["manager_id"] not in selected | managers:
+            copy["manager_id"] = None
+        people.append(copy)
+    included = selected | managers
+    return {**deepcopy(data), "title": title, "people": people,
+            "relationships": [r for r in data.get("relationships", [])
+                              if r.get("from") in included and r.get("to") in included]}
+
+
+def plan(data: dict[str, Any], output_dir: str | None = None) -> dict[str, Any]:
+    """Plan whole-subtree deck parts; never create a presentation."""
+    by_id = _validate_input(data, enforce_cap=False)
+    estimated = estimate_pages(data)
+    result = {"people": len(by_id), "estimated_pages": estimated,
+              "fits_one_deck": len(by_id) <= MAX_PEOPLE and estimated <= MAX_PAGES}
+    if result["fits_one_deck"]:
+        return result
+    children = _children(by_id)
+    notes, units = [], []
+
+    def descendants(node):
+        found, stack = [], [node]
+        while stack:
+            current = stack.pop()
+            found.append(current)
+            stack.extend(reversed([p["id"] for p in children[current]]))
+        return found
+
+    def fits(ids):
+        candidate = _part_input(data, by_id, ids, "Organization part")
+        return len(candidate["people"]) <= MAX_PEOPLE and estimate_pages(candidate) <= MAX_PAGES
+
+    def divide(node):
+        ids = descendants(node)
+        if fits(ids):
+            units.append(ids)
+        else:
+            notes.append(f"Subtree {node} exceeds one deck; split one level below its leader.")
+            units.append([node])
+            for child in children[node]:
+                divide(child["id"])
+
+    roots = children[None]
+    if len(roots) == 1:
+        units.append([roots[0]["id"]])
+        for child in children[roots[0]["id"]]:
+            divide(child["id"])
+    else:
+        for root in roots:
+            divide(root["id"])
+    batches, current = [], []
+    for unit in units:
+        if current and not fits(current + unit):
+            batches.append(current)
+            current = []
+        current.extend(unit)
+    if current:
+        batches.append(current)
+    parts = []
+    directory = Path(output_dir) if output_dir else None
+    if directory:
+        directory.mkdir(parents=True, exist_ok=True)
+    for index, ids in enumerate(batches, 1):
+        title = f"{data.get('title') or 'Organization'} · Part {index}"
+        candidate = _part_input(data, by_id, ids, title)
+        owned = set(ids)
+        top_nodes = [node for node in ids if by_id[node]["manager_id"] not in owned]
+        part = {"title": title, "people": len(candidate["people"]), "pages": estimate_pages(candidate),
+                "top_nodes": top_nodes, "person_ids": ids,
+                "duplicated_roots": [p["id"] for p in candidate["people"] if p.get("duplicated_root")]}
+        if directory:
+            # Flat interchange keys, ready for normalize_org_chart.py flat_json.
+            flat = [{**p, "node_id": p["id"], "display_name": p["name"],
+                     "manager_node_id": p["manager_id"], "node_type": p.get("kind", "person")}
+                    for p in candidate["people"]]
+            path = directory / f"part-{index:03}.json"
+            _write_json({"title": title, "people": candidate["people"], "nodes": flat}, str(path))
+            part["file"] = str(path)
+        parts.append(part)
+    result.update(parts=parts, notes=notes,
+                  overview_part={"title": "Organization parts overview",
+                                 "top_nodes": list(dict.fromkeys([r["id"] for r in roots] +
+                                                                 [n for p in parts for n in p["top_nodes"]])),
+                                 "suggestion": "A small overview containing the root and one card per part leader."})
+    return result
+
+
+def layout(data: dict[str, Any], mode_override: str | None = None, *, _estimate: bool = False) -> dict[str, Any]:
+    by_id = _validate_input(data, enforce_cap=not _estimate)
+    mode = mode_override or (data.get("options") or {}).get("mode") or ("enterprise_overview" if len(by_id) > MAX_PEOPLE else recommend(data)["recommended_mode"])
     if mode not in MODES:
         raise GeometryError(f"Unknown mode {mode!r}. Choose one of: {', '.join(MODES)}")
     _canvas(data)  # fail early
@@ -1154,8 +1369,9 @@ def layout(data: dict[str, Any], mode_override: str | None = None) -> dict[str, 
     else:
         pages = _enterprise_pages(data, by_id)
 
-    if len(pages) > 30:
-        raise GeometryError("This chart would need more than 30 pages. Split the roster into smaller charts.")
+    if not _estimate and len(pages) > MAX_PAGES:
+        raise GeometryError(f"This chart would need more than {MAX_PAGES} pages. Use the plan command to split the roster.")
+    _finalize_navigation(pages, by_id)
     result = {
         "schema": "collibra-org-chart-geometry/v1",
         "generator_version": VERSION,
@@ -1195,8 +1411,10 @@ def layout(data: dict[str, Any], mode_override: str | None = None) -> dict[str, 
             for index, relation in enumerate(data.get("relationships") or [])
         ],
         "pages": pages,
+        "navigation": [{"page": p["index"], "title": p["title"], "level": p.get("navigation_level", 0),
+                        "parent_page": p.get("parent_page")} for p in pages],
     }
-    validation = validate_layout(result)
+    validation = validate_layout(result, _estimate=_estimate)
     result["validation"] = validation
     if not validation["valid"]:
         raise GeometryError("Generated invalid geometry: " + "; ".join(validation["errors"]))
@@ -1215,14 +1433,17 @@ def _rect_from_element(element: dict[str, Any]) -> dict[str, float] | None:
         return None
 
 
-def validate_layout(result: dict[str, Any]) -> dict[str, Any]:
+def validate_layout(result: dict[str, Any], *, _estimate: bool = False) -> dict[str, Any]:
     errors: list[str] = []
     warnings: list[str] = []
     pages = result.get("pages")
     if not isinstance(pages, list) or not pages:
         return {"valid": False, "errors": ["Layout has no pages."], "warnings": []}
-    if len(pages) > 30:
-        errors.append("This chart supports up to 30 pages. Split it into smaller charts.")
+    if not _estimate and len(pages) > MAX_PAGES:
+        errors.append(f"This chart supports up to {MAX_PAGES} pages. Use the plan command to split it.")
+    people = {e["node_id"] for p in pages for e in p.get("elements", []) if e.get("node_id") and not e.get("data", {}).get("context")}
+    if not _estimate and len(people) > MAX_PEOPLE:
+        errors.append(f"This chart supports up to {MAX_PEOPLE} people. Use the plan command to split it.")
     names: set[str] = set()
     google_object_ids: set[str] = set()
     for page in pages:
@@ -1432,6 +1653,10 @@ def _build_parser() -> argparse.ArgumentParser:
     recommend_parser = subparsers.add_parser("recommend", help="Recommend and compare layout modes.")
     recommend_parser.add_argument("input", help="Input JSON path, or - for stdin.")
     recommend_parser.add_argument("--output", help="Write JSON here instead of stdout.")
+    plan_parser = subparsers.add_parser("plan", help="Estimate and split a roster into deck-sized flat inputs.")
+    plan_parser.add_argument("input", help="Input JSON path, or - for stdin.")
+    plan_parser.add_argument("--output-dir", help="Write one flat-input JSON per part; never creates decks.")
+    plan_parser.add_argument("--output", help="Write plan JSON here instead of stdout.")
     validate_parser = subparsers.add_parser("validate", help="Validate previously generated geometry.")
     validate_parser.add_argument("input", help="Geometry JSON path, or - for stdin.")
     validate_parser.add_argument("--output", help="Write validation JSON here instead of stdout.")
@@ -1444,6 +1669,8 @@ def main(argv: list[str] | None = None) -> int:
         source = _read_json(args.input)
         if args.command == "layout":
             output = layout(source, args.mode)
+        elif args.command == "plan":
+            output = plan(source, args.output_dir)
         elif args.command == "recommend":
             output = recommend(source)
         else:

@@ -2,7 +2,7 @@
 name: orgchart
 description: "Build or update an editable Google Slides org chart from a roster, your Workday reporting line, a Google Sheet or a CSV. Use for org charts, team charts, reporting lines, reorg or headcount planning views."
 metadata:
-  version: "1.1.2"
+  version: "1.2.0"
 ---
 # Org chart
 
@@ -16,11 +16,20 @@ Commands: `/orgchart` starts a chart; `/orgchart templates` lists choices;
    and offer a text preview meanwhile.
 2. Ask for purpose (current, planned or mixed), audience and as-of date. Keep
    proposed positions distinct from current facts.
-3. Get people from a permitted source: Workday self-scoped tools, a Google Sheet,
-   CSV, pasted roster or typed list. Workday tools cover your profile, manager,
-   reporting chain and direct reports; access is limited to your own line and
-   one manager level per call. Do not infer wider access. See
+3. Get people from a permitted source, and say up front what each can reach.
+   Self-service Workday tools cover only the signed-in user's own line: their
+   profile, manager, reporting chain and direct reports, one manager level per
+   call. They cannot build another leader's organization or a whole function.
+   For anything wider, ask for a Google Sheet or CSV export (for example a
+   Workday team or supervisory-organization report) with node_id, display_name,
+   title, manager_node_id and function columns. Do not infer wider access or
+   fall back to another system without the user's say-so. See
    [data sources](references/data-sources.md) and [privacy](references/privacy.md).
+   Large organizations: one deck holds up to 1,000 people and 120 pages. Big
+   functions get their own overview of sub-leaders, then team pages per
+   sub-leader. If a roster is larger, run
+   `python3 scripts/org_chart_geometry.py plan <roster>.json` to get a split into
+   several decks, and agree the split with the user before building anything.
 4. Normalize locally and show the text outline, status totals, recommendation
    and page plan before any Slides call. Resolve missing or ambiguous links.
 5. List the [templates](references/templates.md) and choose a template and
@@ -32,6 +41,10 @@ Commands: `/orgchart` starts a chart; `/orgchart templates` lists choices;
    the preview and say no deck was created. Reconcile uncertain writes before retry.
 7. Offer to update the deck later, compare a scenario or export. See [statuses](references/statuses.md)
    and [model and cost guidance](references/models-and-cost.md).
+
+## Build large decks in stages
+
+Do not try to deliver a big deck in one pass. With `--split-dir`, send the overview pages first and show the user a thumbnail, then add one function or one sub-leader's team pages at a time, one `update_presentation` call per page file, checking each with a thumbnail. Send `cleanup.json` last. Offer to stop after any stage: a deck with the overview and the functions the user cares about is a good result. Pages are independent, so the user can come back and add the rest later.
 
 ## Talk to the user
 
