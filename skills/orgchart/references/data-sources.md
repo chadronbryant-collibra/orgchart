@@ -21,6 +21,13 @@ Rules:
   call-cost advice first, page sequentially, stop on any outcome other than
   `ok`, and run `scripts/workday_roster.py` on the saved pages. Report
   complete or partial with its reasons; never fill gaps by guessing.
+- A roster from the Workday roster tools arrives as flat rows with a count-only
+  completeness report. Treat a `partial` report as partial: name the
+  sub-organizations or levels that are missing, and never present the chart as
+  complete. Contingent workers arrive with worker type `contingent` and no
+  `[C]` in the name. A head row added with `--add-head` is flagged in the report
+  (`head_row_added`, `head_row_synthesized_fields`) because its name and title
+  were not read from Workday.
 - Self-service tools build only the caller's own line. For a wider chart
   without roster tools, ask for a Sheet or CSV (for example a Workday team or
   supervisory-organization report).

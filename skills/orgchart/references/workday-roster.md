@@ -27,9 +27,10 @@ and `rows`. The first page's `sub_org_count` and `total_in_unit` give a cost
 estimate before you pull more.
 
 Row fields: `node_id`, `display_name`, `title`, `manager_node_id`, `function`,
-`status`, `worker_type`, `node_type`, `location`. Contingent workers arrive as
-`employee` with a trailing `[C]` on the name; the assembler removes the mark and
-sets `contingent`. `function` is the org label with the unit head's name in
+`status`, `worker_type`, `node_type`, `location`. Some responses mark
+contingent workers as `employee` with a trailing `[C]` on the name; the assembler
+removes the mark and sets `contingent`. Others arrive with worker type
+`contingent` and no `[C]`; the assembler keeps that as it is. `function` is the org label with the unit head's name in
 parentheses (`--clean-function` drops it). Open positions are not returned.
 
 The head of the scope org is not a row. Top-level rows point at a manager who
@@ -79,7 +80,11 @@ prints a lower-bound estimate (`--people` is a rough headcount, 0 if unknown).
    `next_offset` while `has_more` is `'true'`. Go one page at a time. Do not
    retry in a loop; on a failure, stop and report it.
 2. Save each response unedited to its own file in a temporary folder outside the
-   repository: `page-001.json`, `page-002.json` and so on.
+   repository: `page-001.json`, `page-002.json` and so on. Always save the
+   digest fields (`rows_digest` and `rows_digest_alg`) with each page. Copy
+   every row exactly, never tidy or shorten values, and never merge pages by
+   hand. The assembler warns when a page has no digest, because a changed
+   location or similar value cannot be detected without it.
 3. Assemble (`SK` is the skill folder, `W` the working folder):
 
 ```sh
@@ -106,11 +111,30 @@ Flags:
 - `--dangling roots` makes rows whose manager is outside the pull into roots.
   Use it only after the user agrees.
 - `--add-head "Name" --head-title "Title"` adds the one missing org head as a
-  row. It refuses unless exactly one manager is missing.
+  row, with the org's function label. The title defaults to "Organization head".
+  It refuses unless exactly one manager is missing.
 - `--clean-function` drops the trailing manager name from function labels.
 - `--as-of YYYY-MM-DD` sets `source_as_of` (default today).
 
 A manager cycle stops the run and no roster is written.
+
+The assembler also checks each page's row count against its own
+`returned_count`, each unit's rows against `total_in_unit`, that one unit has one
+function label, and each page's `rows_digest`. If `integrity` in the report is
+not all zero, the run stops: re-save the affected pages from the tool responses
+and rerun (`--accept-integrity` writes the roster anyway; use it only after the
+user agrees). A page saved without a digest gives a warning, not a failure.
+
+Reading the report:
+
+- Treat `partial` as partial. Say which sub-organizations or levels are missing
+  (for example `depth_limit` means organizations below the second level are not
+  included) and never present the roster as complete.
+- Contingent workers arrive with worker type `contingent` and no `[C]`.
+- A head added with `--add-head` was not read from Workday. Its name comes from
+  the org label or the user, and its title defaults to "Organization head" (or
+  `--head-title`). The report flags it with `head_row_added` and
+  `head_row_synthesized_fields`; tell the user.
 
 ## Output fields
 

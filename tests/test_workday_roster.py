@@ -192,5 +192,70 @@ class EndToEndTests(WorkdayRosterBase):
         self.assertTrue(geometry.validate_layout(layout)["valid"])
 
 
+class IntegrityTests(WorkdayRosterBase):
+    def page(self, rows, **extra):
+        pg = unit_page(0, rows, last=True, codes="")
+        pg["result"]["total_in_unit"] = str(len(rows))
+        pg["result"].update(extra)
+        return pg
+
+    def digest_page(self, rows, **extra):
+        return self.page(rows, rows_digest=mod.rows_digest(rows), rows_digest_alg=mod.DIGEST_ALG, **extra)
+
+    def test_dropped_row_is_caught_by_counts(self):
+        pg = self.page([row("a", "head"), row("b", "head")])
+        pg["result"]["rows"].pop()
+        code, out, rep = self.run_asm([self.write("page-001.json", pg)], "--dangling", "roots")
+        self.assertEqual(code, 3)
+        self.assertFalse(out.exists())
+        self.assertEqual((rep["integrity"]["page_count_mismatch"], rep["integrity"]["unit_total_mismatch"]), (1, 1))
+        self.assertIn("integrity_check_failed", rep["partial_reasons"])
+
+    def test_integrity_failure_can_be_accepted(self):
+        pg = self.page([row("a", "head"), row("b", "head")])
+        pg["result"]["rows"].pop()
+        code, out, _ = self.run_asm([self.write("page-001.json", pg)], "--dangling", "roots", "--accept-integrity")
+        self.assertEqual(code, 0)
+        self.assertTrue(out.exists())
+
+    def test_digest_detects_a_changed_value(self):
+        rows = [row("a", "head", location="Demo North"), row("b", "head", location="Demo South")]
+        code, _, rep = self.run_asm([self.write("page-001.json", self.digest_page(rows))], "--dangling", "roots")
+        self.assertEqual(code, 0)
+        self.assertEqual((rep["integrity"]["pages_digest_checked"], rep["integrity"]["page_digest_mismatch"]), (1, 0))
+        self.assertEqual(rep["warnings"], [])
+        changed = self.digest_page(rows)
+        changed["result"]["rows"][1]["location"] = "Demo East"
+        out2, rep2 = self.dir / "r2.json", self.dir / "rep2.json"
+        with redirect_stdout(io.StringIO()):
+            code = mod.main(["assemble", self.write("page-003.json", changed), "--output", str(out2),
+                             "--report", str(rep2), "--dangling", "roots"])
+        self.assertEqual(code, 3)
+        self.assertFalse(out2.exists())
+        self.assertEqual(json.loads(rep2.read_text())["integrity"]["page_digest_mismatch"], 1)
+
+    def test_page_without_digest_warns_but_does_not_fail(self):
+        code, out, rep = self.run_asm([self.write("page-001.json", self.page([row("a", "head")]))], "--dangling", "roots")
+        self.assertEqual(code, 0)
+        self.assertTrue(out.exists())
+        self.assertEqual(rep["integrity"]["pages_without_digest"], 1)
+        self.assertEqual(len(rep["warnings"]), 1)
+        self.assertIn("rows_digest", rep["warnings"][0])
+
+    def test_unknown_digest_algorithm_is_ignored(self):
+        pg = self.page([row("a", "head")], rows_digest="00", rows_digest_alg="other")
+        code, _, rep = self.run_asm([self.write("page-001.json", pg)], "--dangling", "roots")
+        self.assertEqual((code, rep["integrity"]["pages_digest_checked"]), (0, 0))
+
+    def test_added_head_is_chart_ready_and_flagged(self):
+        pg = self.page([row("a", "head", function="Org A"), row("b", "head", function="Org A")])
+        code, out, rep = self.run_asm([self.write("page-001.json", pg)], "--add-head", "Head Person")
+        self.assertEqual(code, 0)
+        head = json.loads(out.read_text())[0]
+        self.assertEqual((head["title"], head["function"], head["manager_node_id"]), ("Organization head", "Org A", ""))
+        self.assertTrue(rep["head_row_added"])
+        self.assertEqual(rep["head_row_synthesized_fields"], ["display_name", "title", "function"])
+
+
 if __name__ == "__main__":
     unittest.main()

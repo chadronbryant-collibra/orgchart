@@ -113,8 +113,11 @@ Google account wasn't checked, just say so in plain words.
 
 ## Local preview
 
-Run from the skill folder with Python 3.10 or newer. The working folder is
-created on demand and contains roster data; remove it when done.
+Run from the skill folder with Python 3.10 or newer. Any folder works for the
+working files; the examples use `./orgchart-work` for brevity. The folder is
+created on demand and contains roster data. Workday roster files hold People
+rows, so use a folder outside any repository (with absolute paths) and delete it
+when the chart is done.
 
 ```sh
 mkdir -p ./orgchart-work

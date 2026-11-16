@@ -13,6 +13,11 @@ template. The per-deck limits are 1000 people or positions, 120 pages and 8 matr
 Rosters of 35 or more people default to Overview + team pages (unless matrix
 relationships select Matrix); above 200, the recommendation includes a scale note.
 
+Leadership team suits up to 6 top-level people. With more roots the first band
+gets narrow cards and very small text (11 roots gave 65 pt cards and 8 pt text),
+so the planner then recommends Simple tree and a Leadership team layout carries
+a warning. Offer Simple tree instead.
+
 Leadership team places roots in the first band, direct reports in the next,
 and deeper reports in later bands. Sibling groups sit under their parent, with
 reporting lines for people on the same page. Departments and teams groups people

@@ -19,7 +19,29 @@
   access allows". Claude never retries with other IDs or another system after
   Workday refuses.
 
+### Fixed
+
+- The "Team continues on page N" label on a head card repeated across team
+  pages could name the wrong page (one slide said page 3, the others page 2).
+  Each copy now points forward to the next page where the team continues.
+- Cards with four text lines (a wrapped long name, or the Contingent marker)
+  could overflow slightly in Simple tree and the other hierarchy layouts. Card
+  height now grows to fit the text, as it already did on team pages.
+- Leadership team with many top-level people (11 roots gave 65 pt cards and 8 pt
+  text) now warns above 6 roots and recommends Simple tree.
+
 ### Also in this release
+
+- Roster checks: the assembler compares each page with its own row counts and
+  `rows_digest`, stops when a saved page does not match, and warns when a page
+  was saved without a digest. Save the digest fields with every page.
+- A head row added with `--add-head` gets a default title and the org's function
+  label, and the report flags it because it was not read from Workday. A
+  `partial` roster report is presented as partial, naming what is missing.
+- Slides writer: copy the template to My Drive and confirm the copy is shared
+  with the owner only before writing any People data.
+- Local preview: any folder works; Workday roster files hold People rows, so use
+  a folder outside any repository and delete it when done.
 
 - Edit flow: add, change, move or remove positions, proposed roles and dotted
   lines in plain words, with a current-vs-planned diff.

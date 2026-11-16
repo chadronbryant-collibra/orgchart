@@ -6,6 +6,7 @@ Prints counts and field names, never row values.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import sys
@@ -110,6 +111,60 @@ def size_advice(rows: int) -> str:
     return "split_decks" if rows > DECK_LIMIT else "staged" if rows > STAGE_AT else "single_chart"
 
 
+DIGEST_FIELDS = ["node_id", "display_name", "title", "manager_node_id", "function",
+                 "status", "worker_type", "node_type", "location"]
+DIGEST_ALG = "sha256-lines-v1"
+
+
+def rows_digest(rows: list[dict]) -> str:
+    """sha256 over one pipe-joined line per row, in returned order."""
+    lines = ["|".join(str(r.get(f, "")) for f in DIGEST_FIELDS) for r in rows]
+    return hashlib.sha256("\n".join(lines).encode("utf-8")).hexdigest()
+
+
+NODE_ID_SHAPE = re.compile(r"^[0-9a-f]{64}$")
+
+
+def integrity(pages: list[dict]) -> dict:
+    """Checks that catch a page whose rows were changed or dropped when it was saved.
+
+    Without a page digest these see only count and consistency breaks (a changed
+    location is invisible).
+    """
+    count_mismatch = digest_checked = digest_bad = ok_pages = 0
+    unit_rows: dict[int, int] = {}
+    unit_total: dict[int, int] = {}
+    unit_functions: dict[int, set] = {}
+    for p in pages:
+        if str(p.get("outcome", "ok")) != "ok":
+            continue
+        ok_pages += 1
+        rows = p.get("rows") or []
+        rc = as_int(p.get("returned_count"))
+        if rc is not None and rc != len(rows):
+            count_mismatch += 1
+        if p.get("rows_digest") and p.get("rows_digest_alg") == DIGEST_ALG:
+            digest_checked += 1
+            if rows_digest(rows) != str(p["rows_digest"]).lower():
+                digest_bad += 1
+        unit = as_int(p.get("unit"))
+        if unit is None:
+            continue
+        unit_rows[unit] = unit_rows.get(unit, 0) + len(rows)
+        total = as_int(p.get("total_in_unit"))
+        if total is not None:
+            unit_total[unit] = total
+        unit_functions.setdefault(unit, set()).update(str(r.get("function", "")) for r in rows)
+    return {
+        "page_count_mismatch": count_mismatch,
+        "unit_total_mismatch": sum(1 for u, t in unit_total.items() if unit_rows.get(u, 0) != t),
+        "units_with_mixed_function": sum(1 for f in unit_functions.values() if len(f) > 1),
+        "page_digest_mismatch": digest_bad,
+        "pages_digest_checked": digest_checked,
+        "pages_without_digest": ok_pages - digest_checked,
+    }
+
+
 def plan(args) -> int:
     # Inactive sub-orgs are included and each still costs a page, so they are
     # not subtracted. --inactive-sub-orgs is kept only so older calls still run.
@@ -196,10 +251,14 @@ def assemble(args) -> int:
     partial_reasons = sorted({c for c in codes if c != "more_pages"})
     bad_outcomes = sorted(o for o in outcomes if o not in ("ok", "row_without_node_id"))
     gaps = page_gaps(pages)
+    checks = integrity(pages)
+    integrity_failed = any(v for k, v in checks.items() if k not in ("pages_digest_checked", "pages_without_digest"))
     if unfinished:
         partial_reasons.append("pull_not_finished")
     if gaps:
         partial_reasons.append("page_gap")
+    if integrity_failed:
+        partial_reasons.append("integrity_check_failed")
     if bad_outcomes:
         partial_reasons += [f"outcome:{o}" for o in bad_outcomes]
     if unexplained_partial:
@@ -220,6 +279,9 @@ def assemble(args) -> int:
         "inactive_units_flagged": inactive_units,
         "size_advice": size_advice(len(merged)),
         "page_gaps": gaps,
+        "integrity": checks,
+        "nonstandard_node_ids": sum(1 for n in merged if not NODE_ID_SHAPE.match(n)),
+        "warnings": ([f"{checks['pages_without_digest']} page(s) saved without rows_digest: a changed location or similar value cannot be detected; save rows_digest and rows_digest_alg with every page"] if checks["pages_without_digest"] else []),
         "contingent_marker_fixed": contingent_fixed,
         "outcomes": dict(outcomes),
         "completeness_values": dict(comps),
@@ -231,6 +293,12 @@ def assemble(args) -> int:
         "wrote_roster": False,
     }
 
+    if integrity_failed and not args.accept_integrity:
+        Path(args.report).write_text(json.dumps(report, indent=2), encoding="utf-8")
+        print(json.dumps(report, indent=2))
+        print("integrity checks failed: a saved page does not match its own counts or unit; "
+              "re-save the affected pages from the tool responses and rerun", file=sys.stderr)
+        return 3
     if cycles:
         Path(args.report).write_text(json.dumps(report, indent=2), encoding="utf-8")
         print(json.dumps(report, indent=2))
@@ -245,11 +313,14 @@ def assemble(args) -> int:
             return 3
         head_id = next(iter(missing))
         head = {k: "" for k in FIELDS}
+        unit0 = next((r for r in merged.values() if r["function"]), None)
         head.update(node_id=head_id, display_name=args.add_head, title=args.head_title,
-                    node_type="person", status="filled", worker_type="employee")
+                    node_type="person", status="filled", worker_type="employee",
+                    function=unit0["function"] if unit0 else "")
         merged = {head_id: head, **merged}
         dangling = []
         report["head_row_added"] = True
+        report["head_row_synthesized_fields"] = ["display_name", "title"] + (["function"] if head["function"] else [])
         report["rows_out"] = len(merged)
         report["size_advice"] = size_advice(len(merged))
     if dangling and args.dangling != "roots":
@@ -295,7 +366,9 @@ def main(argv=None) -> int:
     a.add_argument("--dangling", choices=("fail", "roots"), default="fail")
     a.add_argument("--as-of", default="")
     a.add_argument("--add-head", default="", help="name for the one missing manager (the org head)")
-    a.add_argument("--head-title", default="")
+    a.add_argument("--head-title", default="Organization head",
+                   help="title for the added head row; /orgchart needs a title (default: Organization head)")
+    a.add_argument("--accept-integrity", action="store_true", help="write the roster even if integrity checks failed")
     a.add_argument("--clean-function", action="store_true", help="drop a trailing (manager name) from function labels")
     a.set_defaults(func=assemble)
     args = ap.parse_args(argv)
