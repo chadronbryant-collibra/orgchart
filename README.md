@@ -27,11 +27,6 @@ it can see and tells you what's missing. See
 
 ## Install
 
-- Claude Code from the plugin marketplace: `/plugin install orgchart
-  --marketplace chadronbryant-collibra/collibra-plugins`, then start a new
-  session.
-- From this repository (the steps below need the repository files, which the
-  plugin zip does not contain):
 - Claude Code: run `./install.sh`, then start a new session. You get `/orgchart`.
 - Claude Desktop: run `python3 scripts/build_desktop_zip.py`, then upload
   `dist/orgchart.zip` under Customize > Skills.
