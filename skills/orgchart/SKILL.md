@@ -1,6 +1,6 @@
 ---
 name: orgchart
-description: "Build or update an editable Google Slides org chart from a roster, your Workday reporting line, a Google Sheet or a CSV. Use for org charts, team charts, reporting lines, reorg or headcount planning views."
+description: "Build or update an editable Google Slides org chart from a roster, your Workday reporting line, a Google Sheet or a CSV. Use for org charts, team charts, reporting lines, open or planned roles, current vs planned headcount views and reorg what-ifs. Not for looking up one person's manager, and never for pay, performance or contact details."
 metadata:
   version: "1.2.0"
 ---
@@ -8,6 +8,11 @@ metadata:
 
 Commands: `/orgchart` starts a chart; `/orgchart templates` lists choices;
 `/orgchart update <deck link>` updates a chart; `/orgchart help` explains the flow.
+
+For `/orgchart help`, "what can you do" or any question about what is possible,
+read [overview](references/overview.md) and answer from it in plain words:
+layouts, role statuses, what-if scenarios, what you can give me and what I
+won't include. No connector is needed to explain this, so don't check tools first.
 
 1. Check which Google Drive and Google Slides tools are available, plus optional
    Workday and Google Sheets tools, and say what is present or missing in one
@@ -35,7 +40,9 @@ Commands: `/orgchart` starts a chart; `/orgchart templates` lists choices;
 5. List the [templates](references/templates.md) and choose a template and
    [layout](references/layouts.md). Recommend one with a one-line tradeoff.
    Starter rosters are sample data, not presentation templates.
-6. Copy the selected template, compile geometry with `slides_requests.py`, and
+6. Copy the selected template into the user's My Drive (Drive `copy_file` with
+   `parentId` `root`) or the folder they name; without a parent the copy lands
+   beside the template, possibly in a shared drive. Compile geometry with `slides_requests.py`, and
    send each request chunk through Slides. Follow the [writer recipe](references/slides-writer.md)
    for readback, verification and visual checks. If writing is unavailable, return
    the preview and say no deck was created. Reconcile uncertain writes before retry.
@@ -49,7 +56,8 @@ Do not try to deliver a big deck in one pass. With `--split-dir`, send the overv
 ## Talk to the user
 
 Many users are not technical. Lead with the outcome, use plain words, and say
-what you have not checked. Do not paste commands unless they ask.
+what you have not checked. Never include pay, performance, personal contact or
+protected details, even when the source has them, and say so if asked. Do not paste commands unless they ask.
 The receipt file is for your own checks: don't repeat its field names or
 values (such as `account_plane` or source verification) to the user. If the
 Google account wasn't checked, just say so in plain words.

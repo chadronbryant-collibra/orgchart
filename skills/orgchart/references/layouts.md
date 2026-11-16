@@ -53,8 +53,8 @@ resolved from final person placements after all overviews have been inserted.
 To estimate a roster, including one above the hard ceiling:
 
 ```sh
-python3 skills/orgchart/scripts/org_chart_geometry.py plan INPUT.json
-python3 skills/orgchart/scripts/org_chart_geometry.py plan INPUT.json --output-dir parts
+python3 scripts/org_chart_geometry.py plan INPUT.json
+python3 scripts/org_chart_geometry.py plan INPUT.json --output-dir parts
 ```
 
 `plan` reports `people`, `estimated_pages` and `fits_one_deck`. When a split is

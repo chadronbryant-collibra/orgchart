@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Help and "what can you do" now explain layouts, statuses, scenarios and
+  privacy limits from a new plain-language overview.
+- The skill description also triggers on open or planned roles and current vs
+  planned views, and excludes single-person lookups.
+- Fixed stale size limits in the statuses reference and FAQ (1,000 people, 120
+  pages) and a wrong script path in the layouts reference.
+- Template copies go to My Drive (`parentId` `root`) instead of landing in the
+  template's shared drive.
+
 ## 1.2.0
 
 ### Added
