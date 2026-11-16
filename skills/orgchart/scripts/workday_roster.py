@@ -135,6 +135,8 @@ def integrity(pages: list[dict]) -> dict:
     unit_rows: dict[int, int] = {}
     unit_total: dict[int, int] = {}
     unit_functions: dict[int, set] = {}
+    last = pages[-1] if pages else {}
+    open_unit = as_int(last.get("unit")) if truthy(last.get("has_more", "false")) else None
     for p in pages:
         if str(p.get("outcome", "ok")) != "ok":
             continue
@@ -157,7 +159,9 @@ def integrity(pages: list[dict]) -> dict:
         unit_functions.setdefault(unit, set()).update(str(r.get("function", "")) for r in rows)
     return {
         "page_count_mismatch": count_mismatch,
-        "unit_total_mismatch": sum(1 for u, t in unit_total.items() if unit_rows.get(u, 0) != t),
+        # The unit still being paged when the pull stopped is reported as
+        # pull_not_finished, not as a damaged page.
+        "unit_total_mismatch": sum(1 for u, t in unit_total.items() if u != open_unit and unit_rows.get(u, 0) != t),
         "units_with_mixed_function": sum(1 for f in unit_functions.values() if len(f) > 1),
         "page_digest_mismatch": digest_bad,
         "pages_digest_checked": digest_checked,
@@ -214,6 +218,8 @@ def assemble(args) -> int:
             unexplained_partial += 1
         if str(page.get("unit_status", "")).lower() == "inactive":
             inactive_units += 1
+        if str(page.get("outcome", "ok")) != "ok":
+            continue  # rows from a failed page are never merged
         for row in page.get("rows") or []:
             rows_in += 1
             nid = str(row.get("node_id", "")).strip()

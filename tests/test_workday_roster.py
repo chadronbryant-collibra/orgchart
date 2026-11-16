@@ -85,6 +85,23 @@ class AssemblerTests(WorkdayRosterBase):
         self.assertEqual(rep["verdict"], "partial")
         self.assertIn("pull_not_finished", rep["partial_reasons"])
 
+    def test_stopped_inside_a_unit_is_unfinished_not_damaged(self):
+        page = {"result": {"outcome": "ok", "unit": "0", "unit_status": "active", "completeness": "partial",
+                           "reason_codes": "more_pages", "total_in_unit": "5", "returned_count": "2",
+                           "has_more": "true", "next_unit": "0", "next_offset": "2",
+                           "rows": [row("a"), row("b", "a")]}}
+        code, _, rep = self.run_asm([self.write("page-001.json", page)])
+        self.assertNotEqual(code, 3)
+        self.assertIn("pull_not_finished", rep["partial_reasons"])
+        self.assertEqual(rep["integrity"]["unit_total_mismatch"], 0)
+
+    def test_rows_from_a_failed_page_are_not_merged(self):
+        ok = self.write("page-001.json", {"outcome": "ok", "has_more": "true", "rows": [row("a")]})
+        bad = self.write("page-002.json", {"outcome": "row_cap_reached", "has_more": "false", "rows": [row("z", "a")]})
+        _, _, rep = self.run_asm([ok, bad])
+        self.assertEqual(rep["verdict"], "partial")
+        self.assertEqual(rep["rows_out"], 1)
+
     def test_reason_codes_and_outcomes_make_partial(self):
         p1 = self.write("page-001.json", {"outcome": "ok", "completeness": {"status": "partial",
                         "reason_codes": ["depth_limit"]}, "has_more": "false", "rows": [row("a")]})

@@ -7,9 +7,9 @@ metadata:
 # Org chart
 
 Scope, in one line for users: Workday is the default source, and it shows only
-what your own Workday access allows. With the Workday roster tools that can be
-any organization Workday lets you see; with only the self-service tools it is
-your own line (you, your manager, your reporting chain, your direct reports).
+what your own Workday access allows. That can be any organization Workday
+lets you see or, where only personal Workday access is connected, your own line
+(you, your manager, your reporting chain, your direct reports).
 For anything else, use a Google Sheet, a CSV or a pasted list. Workday security
 decides; never try another route to get around a Workday refusal.
 

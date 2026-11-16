@@ -331,7 +331,9 @@ def recommend(data: dict[str, Any]) -> dict[str, Any]:
     scale = "Large organization: adaptive function and branch overviews preserve navigation." if len(people) > 200 else None
     if scale:
         rationale += " Scale: " + scale
-    warnings = [_leadership_root_warning(len(roots))] if len(roots) > LEADERSHIP_MAX_ROOTS else []
+    warnings = ([f"Leadership team is skipped: {len(roots)} top-level people make its cards too small "
+                 f"above {LEADERSHIP_MAX_ROOTS}. Use the recommended layout or Simple tree."]
+                if len(roots) > LEADERSHIP_MAX_ROOTS else [])
     return {
         "version": VERSION,
         "recommended_mode": preferred,
@@ -641,18 +643,17 @@ def _layout_levels(data: dict[str, Any], page: dict[str, Any], people: list[dict
             level_w = min(level_w, min(b - a for a, b in zip(centers, centers[1:])) - GAP)
         level_w = min(level_w, 2 * min(min(c - content["x"], content["x"] + content["w"] - c) for c in centers))
         level_widths[level_index] = max(card_w, level_w)
-    if True:
-        # Size cards from their text: grow the row height (tightening the gap
-        # between rows if needed) so the longest card in the page fits.
-        needed_in = max(
-            _text_height_needed(_card(person, _rect(0, 0, level_widths[level_index], card_h), page["id"]), level_widths[level_index])
-            for level_index in levels for person in levels[level_index]
-        ) / 72
-        if needed_in > card_h:
-            vertical_gap = max(0.16, min(vertical_gap, (content["h"] - level_count * needed_in) / max(level_count - 1, 1)))
-            card_h = min(max(card_h, needed_in), (content["h"] - (level_count - 1) * vertical_gap) / level_count)
-            total_h = level_count * card_h + max(0, level_count - 1) * vertical_gap
-            top = content["y"] + max(0.0, (content["h"] - total_h) / 2)
+    # Size cards from their text: grow the row height (tightening the gap
+    # between rows if needed) so the longest card in the page fits.
+    needed_in = max(
+        _text_height_needed(_card(person, _rect(0, 0, level_widths[level_index], card_h), page["id"]), level_widths[level_index])
+        for level_index in levels for person in levels[level_index]
+    ) / 72
+    if needed_in > card_h:
+        vertical_gap = max(0.16, min(vertical_gap, (content["h"] - level_count * needed_in) / max(level_count - 1, 1)))
+        card_h = min(max(card_h, needed_in), (content["h"] - (level_count - 1) * vertical_gap) / level_count)
+        total_h = level_count * card_h + max(0, level_count - 1) * vertical_gap
+        top = content["y"] + max(0.0, (content["h"] - total_h) / 2)
     for level_index in sorted(levels):
         row_elements = []
         level_w = level_widths[level_index]

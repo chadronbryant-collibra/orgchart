@@ -79,7 +79,7 @@ Type `/orgchart templates` to see your options.
 - Collibra template: for Collibra employees, copied from the shared drive
   folder linked in [templates](skills/orgchart/references/templates.md). You
   need access to that folder.
-- Neutral canvas: for everyone, a clean blank presentation.
+- Blank canvas: for everyone, a blank 16:9 deck in any of the other themes, such as dark mode or high contrast.
 
 ## Privacy
 
