@@ -130,6 +130,9 @@ Reading the report:
 - Treat `partial` as partial. Say which sub-organizations or levels are missing
   (for example `depth_limit` means organizations below the second level are not
   included) and never present the roster as complete.
+  The report's `reason_codes` count pages, not organizations. To name the
+  depth-limited organizations, read `unit_label` from the saved pages that carry
+  `depth_limit`.
 - Contingent workers arrive with worker type `contingent` and no `[C]`.
 - A head added with `--add-head` was not read from Workday. Its name comes from
   the org label or the user, and its title defaults to "Organization head" (or

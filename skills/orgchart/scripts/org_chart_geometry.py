@@ -652,6 +652,8 @@ def _layout_levels(data: dict[str, Any], page: dict[str, Any], people: list[dict
     if needed_in > card_h:
         vertical_gap = max(0.16, min(vertical_gap, (content["h"] - level_count * needed_in) / max(level_count - 1, 1)))
         card_h = min(max(card_h, needed_in), (content["h"] - (level_count - 1) * vertical_gap) / level_count)
+        if round(card_h, 2) < needed_in <= (content["h"] - (level_count - 1) * vertical_gap) / level_count:
+            card_h = math.ceil(needed_in * 100) / 100  # boxes are stored to 0.01 in; round up so the text still fits
         total_h = level_count * card_h + max(0, level_count - 1) * vertical_gap
         top = content["y"] + max(0.0, (content["h"] - total_h) / 2)
     for level_index in sorted(levels):
@@ -678,6 +680,10 @@ def _layout_roster_grid(page: dict[str, Any], people: list[dict[str, Any]], colu
     rows = math.ceil(len(people) / columns)
     card_w = (content["w"] - GAP * (columns - 1)) / columns
     card_h = min(0.82, (content["h"] - 0.22 * (rows - 1)) / rows)
+    # Long titles wrap at the 8 pt floor: grow the cards (within the page) to hold them.
+    needed_in = max(_text_height_needed(_card(person, _rect(0, 0, card_w, card_h), page["id"]), card_w)
+                    for person in people) / 72
+    card_h = min(max(card_h, needed_in), (content["h"] - 0.22 * (rows - 1)) / rows)
     if card_w < 1.05 or card_h < 0.48:
         raise GeometryError("Roster grid exceeds readable geometry; reduce cards per drilldown.")
     row_elements: dict[int, list[dict[str, Any]]] = defaultdict(list)
@@ -1291,6 +1297,9 @@ def _finalize_navigation(pages, by_id):
                     card["data"]["continuation_hint"] = wording
                     if _text_fit_problem(card) is None:
                         break
+                else:
+                    # No wording fits a long title: drop the hint rather than overflow the card.
+                    card["data"].pop("continuation_hint", None)
 
 
 def estimate_pages(data: dict[str, Any]) -> int:
