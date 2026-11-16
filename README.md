@@ -1,9 +1,13 @@
 # Org chart
 
-Need an org chart? Tell Claude who's on the team, or let it pull your direct
-reports from Workday, and you'll get an editable Google Slides deck in a few
-minutes. You always see a text preview first, so you can fix mistakes before
+Need an org chart? Tell Claude who's on the team, or let it pull your own
+reporting line from Workday, and you'll get an editable Google Slides deck in a
+few minutes. You always see a text preview first, so you can fix mistakes before
 anything is created.
+
+Workday through Claude covers only your own line (you, your manager, your
+direct reports). For anyone else's organization, give Claude a Sheet, a CSV or
+a pasted list.
 
 ## What you can do
 
@@ -11,8 +15,22 @@ anything is created.
   teams, Matrix, or Overview + team pages. Claude recommends one and tells you
   the tradeoff.
 - Show open, planned and resigned roles next to current people, with a legend.
-- Compare a scenario against today's org without losing the original.
+- Add, move, change or remove positions in plain words, add proposed roles and
+  dotted lines, and see current vs planned side by side.
+- Add an at-a-glance summary page with counts by status and function.
+- Change the look: dark mode, high contrast, soft pastel, black and white print,
+  colour by function, or your own brand colours and font.
 - Update an existing deck later: paste its link and say what changed.
+
+New here? Read the [user manual](skills/orgchart/references/manual.md). It has
+short sections and requests you can copy.
+
+## Who it can chart
+
+Workday through Claude covers only **your own reporting line**: you, your
+manager, your reporting chain and your direct reports. It cannot pull another
+leader's organization or a whole function. For anyone else, give Claude a Google
+Sheet, a CSV or a pasted list.
 
 ## What you need
 
@@ -21,33 +39,43 @@ anything is created.
   Google account. Google Sheets and Workday are optional.
 - Python 3.10 or newer if you use Claude Code (for the local preview helpers).
 
-Not sure what you have? Run `/orgchart help`. Claude checks which connectors
-it can see and tells you what's missing. See
+Not sure what you have? Run `/orgchart help`. Claude explains what it can do
+and checks which connectors it can see when you start a chart. See
 [connector setup](skills/orgchart/references/connector-setup.md).
 
 ## Install
 
-- Claude Code: run `./install.sh`, then start a new session. You get `/orgchart`.
-- Claude Desktop: run `python3 scripts/build_desktop_zip.py`, then upload
-  `dist/orgchart.zip` under Customize > Skills.
+Pick the line that matches how you got this.
 
-Full steps, updating and removing are in [docs/INSTALL.md](docs/INSTALL.md).
+- **Your organization installed the plugin** (an owner uploaded the plugin zip):
+  nothing to install. Start a new chat and type `/orgchart help`.
+- **You have the plugin zip and want it for yourself:** in Claude, open
+  Customize > Plugins > Add > Upload plugin and choose
+  `orgchart-plugin-v<version>.zip`.
+- **You cloned the repository, Claude Code:** run `./install.sh`, then start a
+  new session. You get `/orgchart`.
+- **You cloned the repository, Claude Desktop:** run
+  `python3 scripts/build_desktop_zip.py`, then upload `dist/orgchart.zip` under
+  Customize > Skills.
+
+The first two need no repository files. The last two need the repository.
+Full steps, updating and removing are in the repository's
+`docs/INSTALL.md`.
 
 ## Your first chart
 
 1. Type `/orgchart` and say what the chart is for, who will see it and the
-   as-of date.
+   as-of date. Or just type `/orgchart` and pick from the menu.
 2. Share your people: your Workday line, a Google Sheet, a CSV or a pasted
    list. Check the text preview and pick a layout.
 3. Open the Slides link Claude gives you and edit it like any other deck.
 
-The [five-minute walkthrough](docs/WALKTHROUGH.md) shows this with a sample
-team. Questions are answered in the [FAQ](docs/FAQ.md).
+Ask `/orgchart help` for a tour. Common questions are in the repository's
+`docs/FAQ.md`.
 
 ## Templates
 
-See your options with `python3 skills/orgchart/scripts/templates.py list`, or
-type `/orgchart templates`.
+Type `/orgchart templates` to see your options.
 
 - Collibra template: for Collibra employees, copied from the shared drive
   folder linked in [templates](skills/orgchart/references/templates.md). You
@@ -67,7 +95,8 @@ reorgs. See [models and cost](skills/orgchart/references/models-and-cost.md).
 
 ## Help and feedback
 
-Open a GitHub issue on this repository. Say what you asked for and what you
+Open a GitHub issue on the repository
+(chadronbryant-collibra/orgchart). Say what you asked for and what you
 got, and leave out real names and roster data.
 
 License: not yet chosen; all rights reserved until then.

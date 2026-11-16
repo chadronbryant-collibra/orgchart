@@ -15,3 +15,11 @@ visible "Contingent" text marker and a page legend item with the other palette
 fill and a long dash-dot border. Filled contingent cards use that border and
 fill too. Position statuses remain independent: an open contingent role shows
 both "Open role" and "Contingent" and keeps the open-role border.
+
+## Legend and proposed roles
+
+Each page has a legend that shows only the statuses used on that page, with
+text and a line pattern as well as colour. A proposed role is a planned card
+with a short note ("Proposed: assumes budget approval"). The at-a-glance page
+has its own one-line key instead of the legend chips. Ask for it with
+`--at-a-glance`. See [editing](editing.md) and the [manual](manual.md).

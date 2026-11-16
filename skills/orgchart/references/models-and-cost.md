@@ -14,7 +14,9 @@ Availability and cost depend on your plan and setup.
 
 - Preview first. Fixing a text outline is cheaper than fixing a deck.
 - The Python helpers do the layout math locally, so Claude doesn't have to.
-- Make one batched Slides write instead of many small ones.
+- Send each page file once, whole. Retyping or resending a page costs the
+  most. Check each page with `pagecheck` so a bad page is caught early.
+- Build big decks in stages and stop when the user has what they need.
 - Don't re-read whole decks. Read only what you need to check a change.
 - Start a new chat for a new chart.
 

@@ -1,18 +1,39 @@
 ---
 name: orgchart
-description: "Build or update an editable Google Slides org chart from a roster, your Workday reporting line, a Google Sheet or a CSV. Use for org charts, team charts, reporting lines, open or planned roles, current vs planned headcount views and reorg what-ifs. Not for looking up one person's manager, and never for pay, performance or contact details."
+description: "Build or update an editable Google Slides org chart from a roster, your Workday reporting line, a Google Sheet or a CSV. Use for org charts, team charts, reporting lines, adding, moving or removing positions, planned roles, open roles, dotted lines, current vs planned headcount views, reorg what-ifs, and changing how an org chart looks (dark mode, brand colours, accessible, print). Not for looking up one person's manager, and never for pay, performance or contact details."
 metadata:
   version: "1.2.0"
 ---
 # Org chart
 
+Scope, in one line for users: Workday through Claude covers only your own line
+(you, your manager, your reporting chain, your direct reports). For anyone
+else's organization, use a Google Sheet, a CSV or a pasted list. Never offer to
+pull another leader's organization from Workday.
+
 Commands: `/orgchart` starts a chart; `/orgchart templates` lists choices;
 `/orgchart update <deck link>` updates a chart; `/orgchart help` explains the flow.
 
 For `/orgchart help`, "what can you do" or any question about what is possible,
-read [overview](references/overview.md) and answer from it in plain words:
-layouts, role statuses, what-if scenarios, what you can give me and what I
-won't include. No connector is needed to explain this, so don't check tools first.
+read [overview](references/overview.md) and answer from it in plain words. It
+points to the full [user manual](references/manual.md). No connector is needed
+to explain this, so don't check tools first.
+
+For a bare `/orgchart` with no details, open with this menu, then wait:
+
+> What would you like to do?
+> 1. Build a new org chart from a list, a Sheet or a CSV
+> 2. Add, move or remove positions, or add a proposed role
+> 3. Add dotted lines for second relationships
+> 4. Compare current vs planned
+> 5. Change the look (dark mode, brand colours, accessible, print)
+> 6. Update a deck I already have (paste the link)
+> 7. See what is possible (help)
+>
+> Workday through me covers only your own reporting line. For any other
+> organization, give me a Sheet, a CSV or a pasted list.
+
+If the user names a task, skip the menu.
 
 1. Check which Google Drive and Google Slides tools are available, plus optional
    Workday and Google Sheets tools, and say what is present or missing in one
@@ -43,15 +64,34 @@ won't include. No connector is needed to explain this, so don't check tools firs
 6. Copy the selected template into the user's My Drive (Drive `copy_file` with
    `parentId` `root`) or the folder they name; without a parent the copy lands
    beside the template, possibly in a shared drive. Compile geometry with `slides_requests.py`, and
-   send each request chunk through Slides. Follow the [writer recipe](references/slides-writer.md)
-   for readback, verification and visual checks. If writing is unavailable, return
+   send each page file through Slides one call at a time. Follow the [writer recipe](references/slides-writer.md):
+   check every page against a readback, and send `cleanup.json` last, only after the page check passes. If writing is unavailable, return
    the preview and say no deck was created. Reconcile uncertain writes before retry.
 7. Offer to update the deck later, compare a scenario or export. See [statuses](references/statuses.md)
    and [model and cost guidance](references/models-and-cost.md).
 
+## What users can ask for
+
+Each item has its own page. Read it only when the user asks.
+
+- Add, change, move or remove a position, propose a role, add or remove a dotted
+  line, show current vs planned: [editing](references/editing.md). Confirm
+  removals and moves first. Apply edits to a copy; never overwrite the roster.
+- A summary page of counts at the front: add `--at-a-glance` to the `layout`
+  command. It is off by default; offer it for decks over about 15 people.
+- Colours, fonts, dark mode, brand colours, accessibility, print, footer:
+  [themes](references/themes.md). Ask for `--theme` or `--theme-file`; show the
+  palette before building.
+- Statuses, headcount and the legend: [statuses](references/statuses.md).
+- Everything in plain words with copy-paste requests: [manual](references/manual.md).
+
+Limits to say plainly: logos and pictures come only from the template; colour by
+function has no key on the slide; 8 dotted lines are drawn per deck and the rest
+are listed; edits work on the roster, not on a Sheet or Workday directly.
+
 ## Build large decks in stages
 
-Do not try to deliver a big deck in one pass. With `--split-dir`, send the overview pages first and show the user a thumbnail, then add one function or one sub-leader's team pages at a time, one `update_presentation` call per page file, checking each with a thumbnail. Send `cleanup.json` last. Offer to stop after any stage: a deck with the overview and the functions the user cares about is a good result. Pages are independent, so the user can come back and add the rest later.
+Do not try to deliver a big deck in one pass. With `--split-dir`, send the overview pages first and show the user a thumbnail, then add one function or one sub-leader's team pages at a time, one `update_presentation` call per page file, checking each page with `pagecheck` and a thumbnail. Send `cleanup.json` last, after `pagecheck` passes for every page. Offer to stop after any stage: a deck with the overview and the functions the user cares about is a good result. Pages are independent, so the user can come back and add the rest later.
 
 ## Talk to the user
 
@@ -72,7 +112,7 @@ mkdir -p ./orgchart-work
 python3 scripts/normalize_org_chart.py normalize examples/starters/simple-team.json --output ./orgchart-work/render.json --receipt ./orgchart-work/receipt.json
 python3 scripts/preview_org_chart.py outline ./orgchart-work/render.json
 python3 scripts/templates.py list
-python3 scripts/org_chart_geometry.py layout ./orgchart-work/render.json --mode compact_hierarchy --output ./orgchart-work/geometry.json
+python3 scripts/org_chart_geometry.py layout ./orgchart-work/render.json --mode compact_hierarchy --output ./orgchart-work/geometry.json   # add --at-a-glance for a summary page
 python3 scripts/org_chart_geometry.py validate ./orgchart-work/geometry.json
 python3 scripts/slides_requests.py compile ./orgchart-work/geometry.json --theme collibra-2026 --layout-id g3efe399732d_0_346 --output ./orgchart-work/requests.json
 ```

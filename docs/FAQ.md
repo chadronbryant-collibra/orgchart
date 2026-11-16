@@ -6,6 +6,12 @@ No. With Workday it sees your own profile, your manager, your reporting chain
 and your direct reports, one manager level per call. For anything wider, it
 uses only the roster you give it.
 
+## Is there a manual?
+
+Yes: the [user manual](../skills/orgchart/references/manual.md) has short
+sections and copy-paste requests. It ships with the skill, so ask Claude for
+`/orgchart help` and it will point you to it.
+
 ## Where does the deck go?
 
 Into your Google Drive, as a copy of the template you chose. You own it.
@@ -36,8 +42,14 @@ branches on extra pages. Claude won't quietly leave people out.
 
 ## Can I show matrix or dotted lines?
 
-Yes, a few. Use the Matrix layout. Eight secondary relationships is the limit,
-and more than that makes a page hard to read.
+Yes, a few. Ask for a dotted line in plain words, or use the Matrix layout.
+Eight are drawn per deck; the rest are kept in a list.
+
+## Can I change the look?
+
+Yes: dark mode, high contrast, soft pastel, print black and white, colour by
+function, or your own brand colours and font. Logos and pictures come only from
+the template. See the manual.
 
 ## Can I show open, planned or resigned roles?
 
