@@ -623,10 +623,31 @@ def _layout_levels(data: dict[str, Any], page: dict[str, Any], people: list[dict
         place(root, left)
         left += width(root) * pitch
     created: dict[str, dict[str, Any]] = {}
+    level_widths: dict[int, float] = {}
+    for level_index in sorted(levels):
+        centers = sorted(positions[person["id"]] for person in levels[level_index])
+        level_w = min(2.0, content["w"])
+        if len(centers) > 1:
+            level_w = min(level_w, min(b - a for a, b in zip(centers, centers[1:])) - GAP)
+        level_w = min(level_w, 2 * min(min(c - content["x"], content["x"] + content["w"] - c) for c in centers))
+        level_widths[level_index] = max(card_w, level_w)
+    if _is_team_page(page):
+        # Size cards from their text: grow the row height (tightening the gap
+        # between rows if needed) so the longest card in the page fits.
+        needed_in = max(
+            _text_height_needed(_card(person, _rect(0, 0, level_widths[level_index], card_h), page["id"]), level_widths[level_index])
+            for level_index in levels for person in levels[level_index]
+        ) / 72
+        if needed_in > card_h:
+            vertical_gap = max(0.16, min(vertical_gap, (content["h"] - level_count * needed_in) / max(level_count - 1, 1)))
+            card_h = min(max(card_h, needed_in), (content["h"] - (level_count - 1) * vertical_gap) / level_count)
+            total_h = level_count * card_h + max(0, level_count - 1) * vertical_gap
+            top = content["y"] + max(0.0, (content["h"] - total_h) / 2)
     for level_index in sorted(levels):
         row_elements = []
+        level_w = level_widths[level_index]
         for person in levels[level_index]:
-            element = _card(person, _rect(positions[person["id"]] - card_w / 2, top + level_index * (card_h + vertical_gap), card_w, card_h), page["id"])
+            element = _card(person, _rect(positions[person["id"]] - level_w / 2, top + level_index * (card_h + vertical_gap), level_w, card_h), page["id"])
             page["elements"].append(element)
             row_elements.append(element)
             created[person["id"]] = element
@@ -1243,7 +1264,13 @@ def _finalize_navigation(pages, by_id):
             destinations = [placement[p["id"]] for p in children[node]
                             if p["id"] in placement and placement[p["id"]] != page["index"]]
             if destinations:
-                card["data"]["continuation_hint"] = f"Team continues on page {min(destinations)}"
+                target = min(destinations)
+                # Narrow cards (8 across) cannot hold the long wording at the
+                # 8 pt floor, so fall back to a shorter hint before overflowing.
+                for wording in (f"Team continues on page {target}", f"Continues p. {target}", f"p. {target}"):
+                    card["data"]["continuation_hint"] = wording
+                    if _text_fit_problem(card) is None:
+                        break
 
 
 def estimate_pages(data: dict[str, Any]) -> int:
@@ -1352,7 +1379,103 @@ def plan(data: dict[str, Any], output_dir: str | None = None) -> dict[str, Any]:
     return result
 
 
-def layout(data: dict[str, Any], mode_override: str | None = None, *, _estimate: bool = False) -> dict[str, Any]:
+GLANCE_STATUS_ORDER = (
+    ("filled", "Filled"),
+    ("open", "Open roles"),
+    ("planned", "Planned"),
+    ("resigned", "Resigned"),
+    ("other", "Other status"),
+)
+GLANCE_MAX_FUNCTION_CARDS = 11
+GLANCE_LEGEND = ("Solid border: filled \u00b7 Dashed: open \u00b7 Dotted: planned \u00b7 Red: resigned \u00b7 "
+                 "Grey: other or context \u00b7 Dash-dot: contingent \u00b7 Dotted line: works with")
+
+
+def _person_status(person: dict[str, Any]) -> str:
+    return person.get("status") or ("open" if person.get("kind") == "open_role" else "filled")
+
+
+def glance_totals(data: dict[str, Any]) -> dict[str, Any]:
+    """Headcount totals for the at-a-glance page; context cards never count."""
+    people = [p for p in data["people"] if not p.get("context")]
+    by_status = {key: 0 for key, _ in GLANCE_STATUS_ORDER}
+    for person in people:
+        status = _person_status(person)
+        by_status[status if status in by_status else "other"] += 1
+    functions: dict[str, dict[str, int]] = {}
+    for person in people:
+        entry = functions.setdefault(str(person.get("function") or "Unassigned").strip(), {"positions": 0, "open": 0})
+        entry["positions"] += 1
+        entry["open"] += _person_status(person) == "open"
+    return {
+        "positions": len(people),
+        "by_status": by_status,
+        "contingent": sum(1 for p in people if p.get("kind") == "contractor" or p.get("worker_type") == "contingent"),
+        "dotted_links": len(data.get("relationships") or []),
+        "functions": functions,
+    }
+
+
+def _glance_page(data: dict[str, Any]) -> dict[str, Any]:
+    """One summary page of native cards: counts only, no images."""
+    totals = glance_totals(data)
+    page = _new_page(data, 1, "at-a-glance", "At a glance")
+    content = page["content_bounds"]
+    cards: list[dict[str, Any]] = []
+
+    def add(identity: str, name: str, title: str, box: dict[str, float], status: str | None = None, label: str = "") -> None:
+        card = _summary_card(identity, name, title, box, page["id"])
+        if status:
+            card["data"]["status"] = status
+            card["data"]["statusLabel"] = label
+        cards.append(card)
+
+    as_of = data.get("as_of") or "date not stated"
+    head_h = 0.78
+    add("glance-headline", data.get("title") or "Organization chart",
+        f"As of {as_of} \u00b7 {_count_label(totals['positions'], 'position', 'positions')} \u00b7 "
+        f"{totals['by_status']['filled']} filled \u00b7 {_count_label(totals['dotted_links'], 'dotted-line link', 'dotted-line links')}",
+        _rect(content["x"], content["y"], content["w"], head_h), None)
+    # Row of seven headcount tiles: five statuses, contingent workers, dotted-line links.
+    tiles = [(key, str(totals["by_status"][key]), label) for key, label in GLANCE_STATUS_ORDER]
+    tile_w = (content["w"] - GAP * 6) / 7
+    tile_y = content["y"] + head_h + GAP
+    tile_h = 0.78
+    for i, (key, count, label) in enumerate(tiles):
+        add(f"glance-status-{key}", count, label, _rect(content["x"] + i * (tile_w + GAP), tile_y, tile_w, tile_h),
+            key, "any other status" if key == "other" else "")
+    add("glance-contingent", str(totals["contingent"]), "Contingent workers",
+        _rect(content["x"] + 5 * (tile_w + GAP), tile_y, tile_w, tile_h), "other", "counted in the above")
+    add("glance-dotted", str(totals["dotted_links"]), "Dotted-line links",
+        _rect(content["x"] + 6 * (tile_w + GAP), tile_y, tile_w, tile_h))
+    # Headcount by function, largest first; overflow collapses into one card.
+    ranked = sorted(totals["functions"].items(), key=lambda item: (-item[1]["positions"], item[0]))
+    if len(ranked) > GLANCE_MAX_FUNCTION_CARDS + 1:
+        rest = ranked[GLANCE_MAX_FUNCTION_CARDS:]
+        ranked = ranked[:GLANCE_MAX_FUNCTION_CARDS] + [(
+            f"{len(rest)} other functions",
+            {"positions": sum(v["positions"] for _, v in rest), "open": sum(v["open"] for _, v in rest)},
+        )]
+    columns = 4
+    rows = max(1, -(-len(ranked) // columns))
+    legend_h = 0.42
+    grid_top = tile_y + tile_h + GAP * 2
+    grid_bottom = content["y"] + content["h"] - legend_h - GAP
+    fn_h = min(0.9, (grid_bottom - grid_top - GAP * (rows - 1)) / rows)
+    fn_w = (content["w"] - GAP * (columns - 1)) / columns
+    for i, (function, info) in enumerate(ranked):
+        add(f"glance-function-{_slug(function)}-{i}", function,
+            f"{_count_label(info['positions'], 'position', 'positions')} \u00b7 {info['open']} open",
+            _rect(content["x"] + (i % columns) * (fn_w + GAP), grid_top + (i // columns) * (fn_h + GAP), fn_w, fn_h))
+    add("glance-legend", GLANCE_LEGEND, "",
+        _rect(content["x"], content["y"] + content["h"] - legend_h, content["w"], legend_h))
+    page["elements"] = cards
+    page["glance"] = {k: v for k, v in totals.items() if k != "functions"}
+    page["split_reason"] = None
+    return page
+
+
+def layout(data: dict[str, Any], mode_override: str | None = None, *, at_a_glance: bool | None = None, _estimate: bool = False) -> dict[str, Any]:
     by_id = _validate_input(data, enforce_cap=not _estimate)
     mode = mode_override or (data.get("options") or {}).get("mode") or ("enterprise_overview" if len(by_id) > MAX_PEOPLE else recommend(data)["recommended_mode"])
     if mode not in MODES:
@@ -1371,6 +1494,16 @@ def layout(data: dict[str, Any], mode_override: str | None = None, *, _estimate:
 
     if not _estimate and len(pages) > MAX_PAGES:
         raise GeometryError(f"This chart would need more than {MAX_PAGES} pages. Use the plan command to split the roster.")
+    if at_a_glance is None:
+        at_a_glance = bool((data.get("options") or {}).get("at_a_glance"))
+    if at_a_glance:
+        # Existing pages keep their IDs (so a chart looks the same with or
+        # without the summary); only the visible page numbers move down by one.
+        for page in pages:
+            page["index"] += 1
+            if page.get("parent_page") is not None:
+                page["parent_page"] += 1
+        pages.insert(0, _glance_page(data))
     _finalize_navigation(pages, by_id)
     result = {
         "schema": "collibra-org-chart-geometry/v1",
@@ -1433,6 +1566,79 @@ def _rect_from_element(element: dict[str, Any]) -> dict[str, float] | None:
         return None
 
 
+TEXT_FLOOR_PT = 8.0
+TEXT_INSET_PT = 7.2     # left/right shape padding
+TEXT_INSET_V_PT = 3.6   # top/bottom shape padding
+TEXT_CHAR_EM = 0.5      # average Arial glyph width as a fraction of font size
+TEXT_LINE_EM = 1.2
+
+
+def _card_text_lines(element: dict[str, Any]) -> list[str]:
+    """Mirror of slides_requests.card_text, used for layout-time fit checks."""
+    d = element.get("data") or {}
+    context = d.get("context") or element.get("type") in ("context_card", "repeated_context")
+    status = "context" if context else d.get("status", "open" if d.get("kind") == "open_role" else "filled")
+    name = "Open role" if status == "open" else "Planned" if status == "planned" else d.get("name", "")
+    if status == "context":
+        name += " (context)"
+    lines = [name, d.get("title", "")]
+    if element.get("type") == "group_summary_card" and d.get("lead"):
+        lines.append("Lead: " + d["lead"])
+    details = d.get("details") or []
+    if details:
+        lines.append(str(details[0]))
+    if len(details) > 1:
+        lines.append(" \u00b7 ".join(str(item) for item in details[1:]))
+    if d.get("kind") == "contractor" or d.get("worker_type") == "contingent":
+        lines.append("Contingent")
+    if status == "other":
+        lines.append(d.get("statusLabel", ""))
+    if d.get("continuation_hint"):
+        lines.append(d["continuation_hint"])
+    return lines
+
+
+def _is_team_page(page: dict[str, Any]) -> bool:
+    """Team pages are the tree layouts that share one card width per row."""
+    section = str(page.get("section", ""))
+    return section.startswith("enterprise-") and not section.endswith("overview")
+
+
+def _text_height_needed(element: dict[str, Any], width: float) -> float:
+    """Points of height needed for a card's text at ``width`` inches (>= 8 pt text).
+
+    Font sizes follow the renderer (shrink long lines toward an 8 pt floor);
+    a line still too long at that size wraps. Conservative: assumes 0.5 em
+    average glyph width.
+    """
+    lines = _card_text_lines(element)
+    limit = 30 * width / 2
+    usable_w = width * 72 - 2 * TEXT_INSET_PT
+    needed = 2 * TEXT_INSET_V_PT
+    for index, line in enumerate(lines):
+        if not line and index:
+            continue
+        base = 10 if index == 0 else 9
+        size = round(max(TEXT_FLOOR_PT, min(base, base * limit / max(len(line), 1))), 1)
+        chars_per_line = max(1, int(usable_w / (size * TEXT_CHAR_EM)))
+        wrapped = max(1, -(-len(line) // chars_per_line))
+        needed += wrapped * size * TEXT_LINE_EM
+    return needed
+
+
+def _text_fit_problem(element: dict[str, Any]) -> str | None:
+    """Return a message when a card's text would spill out of its box at >= 8 pt."""
+    box = element.get("box") or {}
+    if not box:
+        return None
+    needed = _text_height_needed(element, float(box["w"]))
+    if needed > float(box["h"]) * 72 + EPSILON:
+        longest = max(_card_text_lines(element), key=len)
+        return (f"text does not fit the card ({needed:.0f} pt needed, {float(box['h']) * 72:.0f} pt available "
+                f"at an 8 pt minimum); longest line {longest!r}")
+    return None
+
+
 def validate_layout(result: dict[str, Any], *, _estimate: bool = False) -> dict[str, Any]:
     errors: list[str] = []
     warnings: list[str] = []
@@ -1472,6 +1678,9 @@ def validate_layout(result: dict[str, Any], *, _estimate: bool = False) -> dict[
                 errors.append(f"{page_id}/{name}: out of canvas bounds")
             if element.get("collision_class") == "card":
                 collision_elements.append((name, box))
+                problem = _text_fit_problem(element) if _is_team_page(page) and element.get("node_id") else None
+                if problem:
+                    errors.append(f"{page_id}/{name}: {problem}")
                 object_id = element.get("google_slides_object_id")
                 if not isinstance(object_id, str) or not GOOGLE_OBJECT_ID.fullmatch(object_id):
                     errors.append(f"{page_id}/{name}: invalid Google Slides object ID")
@@ -1649,6 +1858,8 @@ def _build_parser() -> argparse.ArgumentParser:
     layout_parser = subparsers.add_parser("layout", help="Generate deterministic geometry from an org JSON file.")
     layout_parser.add_argument("input", help="Input JSON path, or - for stdin.")
     layout_parser.add_argument("--mode", choices=MODES, help="Override options.mode.")
+    layout_parser.add_argument("--at-a-glance", action="store_true",
+                               help="Prepend a one-page summary: headcount by status and function, dotted-line count, legend.")
     layout_parser.add_argument("--output", help="Write JSON here instead of stdout.")
     recommend_parser = subparsers.add_parser("recommend", help="Recommend and compare layout modes.")
     recommend_parser.add_argument("input", help="Input JSON path, or - for stdin.")
@@ -1668,7 +1879,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         source = _read_json(args.input)
         if args.command == "layout":
-            output = layout(source, args.mode)
+            output = layout(source, args.mode, at_a_glance=True if args.at_a_glance else None)
         elif args.command == "plan":
             output = plan(source, args.output_dir)
         elif args.command == "recommend":
