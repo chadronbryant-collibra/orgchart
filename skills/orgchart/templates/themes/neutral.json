@@ -1,0 +1,67 @@
+{
+  "id": "neutral",
+  "description": "Plain grey and black on a blank canvas. Works with any template.",
+  "accent": "757575",
+  "colors": {
+    "ink": "212121",
+    "muted": "757575",
+    "line": "757575",
+    "matrix_line": "@accent",
+    "surface": "FFFFFF"
+  },
+  "background": null,
+  "statuses": {
+    "filled": {
+      "fill": "FFFFFF",
+      "outline": "E0E0E0",
+      "dash": "SOLID"
+    },
+    "open": {
+      "fill": "FFFFFF",
+      "outline": "@accent",
+      "dash": "DASH"
+    },
+    "planned": {
+      "fill": "E0E0E0",
+      "outline": "@accent",
+      "dash": "DOT"
+    },
+    "resigned": {
+      "fill": "FDECEA",
+      "outline": "B71C1C",
+      "dash": "SOLID"
+    },
+    "other": {
+      "fill": "E0E0E0",
+      "outline": "757575",
+      "dash": "SOLID"
+    },
+    "context": {
+      "fill": "E0E0E0",
+      "outline": "757575",
+      "dash": "SOLID"
+    },
+    "contingent": {
+      "fill": "E0E0E0",
+      "outline": "757575",
+      "dash": "LONG_DASH_DOT"
+    }
+  },
+  "font": "Arial",
+  "title": {
+    "size": 18,
+    "color": "@ink",
+    "align": "START",
+    "bold": true
+  },
+  "card_corners": "round",
+  "table": {
+    "header_fill": "F0F2F3",
+    "body_fill": null
+  },
+  "footer": null,
+  "color_by_function": {
+    "enabled": false,
+    "palette": null
+  }
+}

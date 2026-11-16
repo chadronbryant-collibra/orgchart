@@ -80,10 +80,9 @@
             "type": "string"
           },
           "theme": {
-            "enum": [
-              "collibra-2026",
-              "neutral"
-            ]
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$",
+            "description": "Id of a theme file in templates/themes."
           },
           "layout_id": {
             "type": "string",

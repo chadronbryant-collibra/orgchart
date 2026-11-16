@@ -1,0 +1,67 @@
+{
+  "id": "high-contrast",
+  "description": "Black text and outlines on white with a deep blue accent. Meets the stricter AAA text contrast, for low vision and bright rooms.",
+  "accent": "0A3D91",
+  "colors": {
+    "ink": "000000",
+    "muted": "1A1A1A",
+    "line": "000000",
+    "matrix_line": "@accent",
+    "surface": "FFFFFF"
+  },
+  "background": null,
+  "statuses": {
+    "filled": {
+      "fill": "FFFFFF",
+      "outline": "000000",
+      "dash": "SOLID"
+    },
+    "open": {
+      "fill": "FFFFFF",
+      "outline": "000000",
+      "dash": "DASH"
+    },
+    "planned": {
+      "fill": "FFF4B3",
+      "outline": "000000",
+      "dash": "DOT"
+    },
+    "resigned": {
+      "fill": "FFE0E0",
+      "outline": "8B0000",
+      "dash": "DASH_DOT"
+    },
+    "other": {
+      "fill": "E6E6E6",
+      "outline": "000000",
+      "dash": "SOLID"
+    },
+    "context": {
+      "fill": "E6E6E6",
+      "outline": "4D4D4D",
+      "dash": "SOLID"
+    },
+    "contingent": {
+      "fill": "E6E6E6",
+      "outline": "000000",
+      "dash": "LONG_DASH_DOT"
+    }
+  },
+  "font": "Arial",
+  "title": {
+    "size": 18,
+    "color": "@ink",
+    "align": "START",
+    "bold": true
+  },
+  "card_corners": "round",
+  "table": {
+    "header_fill": "E6E6E6",
+    "body_fill": null
+  },
+  "footer": null,
+  "color_by_function": {
+    "enabled": false,
+    "palette": null
+  }
+}

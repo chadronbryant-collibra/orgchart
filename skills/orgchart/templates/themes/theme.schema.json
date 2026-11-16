@@ -1,0 +1,377 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Org chart theme",
+  "type": "object",
+  "additionalProperties": false,
+  "description": "Built-in themes must set every field. A user theme file may set only what it changes; it is merged over a base theme.",
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "description": {
+      "type": "string"
+    },
+    "extends": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "accent": {
+      "type": "string",
+      "pattern": "^#?[0-9A-Fa-f]{6}$"
+    },
+    "colors": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ink": {
+          "type": "string",
+          "pattern": "^(#?[0-9A-Fa-f]{6}|@accent|@ink|@muted)$"
+        },
+        "muted": {
+          "type": "string",
+          "pattern": "^(#?[0-9A-Fa-f]{6}|@accent|@ink|@muted)$"
+        },
+        "line": {
+          "type": "string",
+          "pattern": "^(#?[0-9A-Fa-f]{6}|@accent|@ink|@muted)$"
+        },
+        "matrix_line": {
+          "type": "string",
+          "pattern": "^(#?[0-9A-Fa-f]{6}|@accent|@ink|@muted)$"
+        },
+        "surface": {
+          "type": "string",
+          "pattern": "^(#?[0-9A-Fa-f]{6}|@accent|@ink|@muted)$"
+        }
+      }
+    },
+    "background": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "pattern": "^(#?[0-9A-Fa-f]{6}|@accent|@ink|@muted)$"
+        }
+      ]
+    },
+    "statuses": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "filled": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "fill": {
+              "type": "string",
+              "pattern": "^(#?[0-9A-Fa-f]{6}|@accent|@ink|@muted)$"
+            },
+            "outline": {
+              "type": "string",
+              "pattern": "^(#?[0-9A-Fa-f]{6}|@accent|@ink|@muted)$"
+            },
+            "dash": {
+              "enum": [
+                "SOLID",
+                "DOT",
+                "DASH",
+                "DASH_DOT",
+                "LONG_DASH",
+                "LONG_DASH_DOT",
+                "SYS_DASH",
+                "SYS_DOT"
+              ]
+            }
+          }
+        },
+        "open": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "fill": {
+              "type": "string",
+              "pattern": "^(#?[0-9A-Fa-f]{6}|@accent|@ink|@muted)$"
+            },
+            "outline": {
+              "type": "string",
+              "pattern": "^(#?[0-9A-Fa-f]{6}|@accent|@ink|@muted)$"
+            },
+            "dash": {
+              "enum": [
+                "SOLID",
+                "DOT",
+                "DASH",
+                "DASH_DOT",
+                "LONG_DASH",
+                "LONG_DASH_DOT",
+                "SYS_DASH",
+                "SYS_DOT"
+              ]
+            }
+          }
+        },
+        "planned": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "fill": {
+              "type": "string",
+              "pattern": "^(#?[0-9A-Fa-f]{6}|@accent|@ink|@muted)$"
+            },
+            "outline": {
+              "type": "string",
+              "pattern": "^(#?[0-9A-Fa-f]{6}|@accent|@ink|@muted)$"
+            },
+            "dash": {
+              "enum": [
+                "SOLID",
+                "DOT",
+                "DASH",
+                "DASH_DOT",
+                "LONG_DASH",
+                "LONG_DASH_DOT",
+                "SYS_DASH",
+                "SYS_DOT"
+              ]
+            }
+          }
+        },
+        "resigned": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "fill": {
+              "type": "string",
+              "pattern": "^(#?[0-9A-Fa-f]{6}|@accent|@ink|@muted)$"
+            },
+            "outline": {
+              "type": "string",
+              "pattern": "^(#?[0-9A-Fa-f]{6}|@accent|@ink|@muted)$"
+            },
+            "dash": {
+              "enum": [
+                "SOLID",
+                "DOT",
+                "DASH",
+                "DASH_DOT",
+                "LONG_DASH",
+                "LONG_DASH_DOT",
+                "SYS_DASH",
+                "SYS_DOT"
+              ]
+            }
+          }
+        },
+        "other": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "fill": {
+              "type": "string",
+              "pattern": "^(#?[0-9A-Fa-f]{6}|@accent|@ink|@muted)$"
+            },
+            "outline": {
+              "type": "string",
+              "pattern": "^(#?[0-9A-Fa-f]{6}|@accent|@ink|@muted)$"
+            },
+            "dash": {
+              "enum": [
+                "SOLID",
+                "DOT",
+                "DASH",
+                "DASH_DOT",
+                "LONG_DASH",
+                "LONG_DASH_DOT",
+                "SYS_DASH",
+                "SYS_DOT"
+              ]
+            }
+          }
+        },
+        "context": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "fill": {
+              "type": "string",
+              "pattern": "^(#?[0-9A-Fa-f]{6}|@accent|@ink|@muted)$"
+            },
+            "outline": {
+              "type": "string",
+              "pattern": "^(#?[0-9A-Fa-f]{6}|@accent|@ink|@muted)$"
+            },
+            "dash": {
+              "enum": [
+                "SOLID",
+                "DOT",
+                "DASH",
+                "DASH_DOT",
+                "LONG_DASH",
+                "LONG_DASH_DOT",
+                "SYS_DASH",
+                "SYS_DOT"
+              ]
+            }
+          }
+        },
+        "contingent": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "fill": {
+              "type": "string",
+              "pattern": "^(#?[0-9A-Fa-f]{6}|@accent|@ink|@muted)$"
+            },
+            "outline": {
+              "type": "string",
+              "pattern": "^(#?[0-9A-Fa-f]{6}|@accent|@ink|@muted)$"
+            },
+            "dash": {
+              "enum": [
+                "SOLID",
+                "DOT",
+                "DASH",
+                "DASH_DOT",
+                "LONG_DASH",
+                "LONG_DASH_DOT",
+                "SYS_DASH",
+                "SYS_DOT"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "font": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9 '\\-]{2,60}$"
+    },
+    "title": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "size": {
+          "type": "number",
+          "minimum": 12,
+          "maximum": 40
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^(#?[0-9A-Fa-f]{6}|@accent|@ink|@muted)$"
+        },
+        "align": {
+          "enum": [
+            "START",
+            "CENTER",
+            "END"
+          ]
+        },
+        "bold": {
+          "type": "boolean"
+        }
+      }
+    },
+    "card_corners": {
+      "enum": [
+        "round",
+        "square"
+      ]
+    },
+    "table": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "header_fill": {
+          "type": "string",
+          "pattern": "^(#?[0-9A-Fa-f]{6}|@accent|@ink|@muted)$"
+        },
+        "body_fill": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^(#?[0-9A-Fa-f]{6}|@accent|@ink|@muted)$"
+            }
+          ]
+        }
+      }
+    },
+    "footer": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "text": {
+              "type": "string",
+              "maxLength": 120
+            },
+            "size": {
+              "type": "number",
+              "minimum": 6,
+              "maximum": 14
+            },
+            "color": {
+              "type": "string",
+              "pattern": "^(#?[0-9A-Fa-f]{6}|@accent|@ink|@muted)$"
+            }
+          }
+        }
+      ]
+    },
+    "color_by_function": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "palette": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 12,
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "fill",
+                      "outline"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "fill": {
+                        "type": "string",
+                        "pattern": "^(#?[0-9A-Fa-f]{6}|@accent|@ink|@muted)$"
+                      },
+                      "outline": {
+                        "type": "string",
+                        "pattern": "^(#?[0-9A-Fa-f]{6}|@accent|@ink|@muted)$"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

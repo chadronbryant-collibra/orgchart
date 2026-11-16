@@ -15,10 +15,23 @@ from pathlib import Path
 
 FIELDS = 'slides(objectId,pageElements(objectId,shape(shapeType,text.textElements.textRun.content),line(lineProperties(startConnection,endConnection)),table(rows,columns,tableRows(tableCells(text.textElements.textRun.content))),elementGroup(children(objectId,shape(shapeType,text.textElements.textRun.content),line(lineProperties(startConnection,endConnection))))))'
 VALID = re.compile(r'^[A-Za-z0-9_][A-Za-z0-9_:-]{4,49}$')
-THEMES = {
-    'collibra-2026': {'ink':'002B40','muted':'4B4B4B','matrix':'03755F','filled':('FFFFFF','DFE6E8','SOLID'),'open':('FFFFFF','03755F','DASH'),'planned':('F0F2F3','03755F','DOT'),'resigned':('FCE6DF','B64B31','SOLID'),'other':('F0F2F3','4B4B4B','SOLID'),'context':('F0F2F3','4B4B4B','SOLID')},
-    'neutral': {'ink':'212121','muted':'757575','matrix':'757575','filled':('FFFFFF','E0E0E0','SOLID'),'open':('FFFFFF','757575','DASH'),'planned':('E0E0E0','757575','DOT'),'resigned':('FDECEA','B71C1C','SOLID'),'other':('E0E0E0','757575','SOLID'),'context':('E0E0E0','757575','SOLID')},
-}
+import templates
+
+# Built-in themes live in templates/themes/*.json (name -> definition).
+THEMES = templates.builtin_themes()
+
+def theme_palette(theme):
+    """Flatten a theme name or resolved theme into the values compile_requests uses."""
+    if isinstance(theme, str):
+        theme = templates.resolve_theme(theme)
+    c = theme['colors']
+    palette = {'ink': c['ink'], 'muted': c['muted'], 'matrix': c['matrix_line'], 'line': c['line'], 'surface': c['surface'],
+               'background': theme['background'], 'font': theme['font'], 'title': theme['title'], 'footer': theme['footer'],
+               'table': theme['table'], 'shape_type': 'RECTANGLE' if theme['card_corners'] == 'square' else 'ROUND_RECTANGLE',
+               'by_function': theme['color_by_function']['palette'] if theme['color_by_function']['enabled'] else None}
+    for name, st in theme['statuses'].items():
+        palette[name] = (st['fill'], st['outline'], st['dash'])
+    return palette
 
 def ident(value):
     if VALID.fullmatch(value): return value
@@ -62,18 +75,19 @@ def card_text(card):
 
 def compile_requests(geometry, theme, layout_id=None, existing=None, chunk=400, connector_category="auto"):
     if chunk < 1: raise ValueError('--chunk must be positive')
-    palette=THEMES[theme]; requests=[]; used=set(); count={'pages':0,'cards':0,'connectors':0,'tables':0,'legend_items':0,'contingent_legend_items':0}
+    palette=theme_palette(theme); requests=[]; used=set(); count={'pages':0,'cards':0,'connectors':0,'tables':0,'legend_items':0,'contingent_legend_items':0}
     def reserve(obj):
         if obj in used: raise ValueError('Duplicate object ID: '+obj)
         used.add(obj); return obj
-    def shape(page, obj, box, text, fill, border, dash='SOLID', fontsize=11, ink=None, bold_first=False, shape_type='ROUND_RECTANGLE', title_style=False, name_size=None):
+    def shape(page, obj, box, text, fill, border, dash='SOLID', fontsize=11, ink=None, bold_first=False, shape_type=None, title_style=False, name_size=None, text_align=None):
+        shape_type=shape_type or palette['shape_type']
         reserve(obj)
         requests.append({'createShape':{'objectId':obj,'shapeType':shape_type,'elementProperties':props(page,box)}})
         requests.append({'insertText':{'objectId':obj,'insertionIndex':0,'text':text}})
         properties={'shapeBackgroundFill':{'solidFill':{'color':color(fill)}},'outline':{'outlineFill':{'solidFill':{'color':color(border)}},**({'dashStyle':dash} if dash != 'SOLID' else {})},'contentAlignment':'MIDDLE'}
         if title_style: properties.update(shapeBackgroundFill={'propertyState':'NOT_RENDERED'},outline={'propertyState':'NOT_RENDERED'})
         requests.append({'updateShapeProperties':{'objectId':obj,'shapeProperties':properties,'fields':'shapeBackgroundFill,outline,contentAlignment'}})
-        style={'fontFamily':'Arial','fontSize':{'magnitude':_r(fontsize),'unit':'PT'},'foregroundColor':{'opaqueColor':color(ink or palette['ink'])}}
+        style={'fontFamily':palette['font'],'fontSize':{'magnitude':_r(fontsize),'unit':'PT'},'foregroundColor':{'opaqueColor':color(ink or palette['ink'])}}
         # A single-line heading's first run is the entire text. Apply its
         # final style once; multiline headings still need the range override.
         whole_bold=bold_first and bool(text) and '\n' not in text
@@ -86,20 +100,26 @@ def compile_requests(geometry, theme, layout_id=None, existing=None, chunk=400, 
             # Slides indexes UTF-16 code units, not Python code points.
             end=len(text.split('\n',1)[0].encode('utf-16-le'))//2
             if end: requests.append({'updateTextStyle':{'objectId':obj,'textRange':{'type':'FIXED_RANGE','startIndex':0,'endIndex':end},'style':dict({'bold':True}, **({'fontSize':{'magnitude':_r(name_size),'unit':'PT'},'foregroundColor':{'opaqueColor':color(palette['ink'])}} if name_size is not None else {})), 'fields':'bold,fontSize,foregroundColor' if name_size is not None else 'bold'}})
-        requests.append({'updateParagraphStyle':{'objectId':obj,'textRange':{'type':'ALL'},'style':{'alignment':'START' if title_style else 'CENTER'},'fields':'alignment'}})
+        requests.append({'updateParagraphStyle':{'objectId':obj,'textRange':{'type':'ALL'},'style':{'alignment':text_align or ('START' if title_style else 'CENTER')},'fields':'alignment'}})
+    by_function=None
+    if palette['by_function']:
+        names=sorted({e.get('data',{}).get('function','') for p in geometry['pages'] for e in cards(p)},key=lambda n:(n.casefold(),n))
+        by_function={n:(c['fill'],c['outline']) for n,c in ((n,palette['by_function'][i%len(palette['by_function'])]) for i,n in enumerate(names))}
     for page in geometry['pages']:
         pid=reserve(ident(page['id'])); count['pages']+=1
         ref={'layoutId':layout_id} if layout_id else {'predefinedLayout':'BLANK'}
         requests.append({'createSlide':{'objectId':pid,'slideLayoutReference':ref}})
+        if palette['background']: requests.append({'updatePageProperties':{'objectId':pid,'pageProperties':{'pageBackgroundFill':{'solidFill':{'color':color(palette['background'])}}},'fields':'pageBackgroundFill'}})
         title=page.get('title') or geometry.get('title','Organization chart')
         if geometry.get('as_of'): title += ' | As of ' + str(geometry['as_of'])
-        shape(pid,ident(page['id']+'-title'),{'x':0.42,'y':0.22,'w':12.49,'h':0.58},title,'FFFFFF','FFFFFF',fontsize=18,bold_first=True,shape_type='TEXT_BOX',title_style=True)
+        shape(pid,ident(page['id']+'-title'),{'x':0.42,'y':0.22,'w':12.49,'h':0.58},title,'FFFFFF','FFFFFF',fontsize=palette['title']['size'],ink=palette['title']['color'],bold_first=palette['title']['bold'],shape_type='TEXT_BOX',title_style=True,text_align=palette['title']['align'])
+        if palette['footer']: shape(pid,ident(page['id']+'-footer'),{'x':0.42,'y':7.28,'w':12.49,'h':0.2},palette['footer']['text'],'FFFFFF','FFFFFF',fontsize=palette['footer']['size'],ink=palette['footer']['color'],shape_type='TEXT_BOX',title_style=True,text_align='END')
         # Function panel headings and companion relationship tables carry meaning
         # that is not represented by cards or attached lines.
         for e in page.get('elements', []):
             if e.get('type') == 'function_panel':
                 box=e['box']; label=e.get('data', {}).get('name', '')
-                shape(pid,ident(e['stable_name']+'-heading'),{'x':box['x'],'y':box['y'],'w':box['w'],'h':0.36},label,'FFFFFF','FFFFFF',fontsize=11,shape_type='TEXT_BOX')
+                shape(pid,ident(e['stable_name']+'-heading'),{'x':box['x'],'y':box['y'],'w':box['w'],'h':0.36},label,palette['surface'],palette['surface'],fontsize=11,shape_type='TEXT_BOX')
             elif e.get('type') == 'relationship_table':
                 rows=e.get('data', {}).get('rows', [])
                 obj=reserve(ident(e['stable_name']))
@@ -115,7 +135,8 @@ def compile_requests(geometry, theme, layout_id=None, existing=None, chunk=400, 
                 requests.append({'updateTextStyle':{'objectId':obj,'cellLocation':{'rowIndex':0,'columnIndex':0},'textRange':{'type':'ALL'},'style':{'bold':True,'foregroundColor':{'opaqueColor':color(palette['ink'])}},'fields':'bold,foregroundColor'}})
                 for ci in (1,2):
                     requests.append({'updateTextStyle':{'objectId':obj,'cellLocation':{'rowIndex':0,'columnIndex':ci},'textRange':{'type':'ALL'},'style':{'bold':True,'foregroundColor':{'opaqueColor':color(palette['ink'])}},'fields':'bold,foregroundColor'}})
-                requests.append({'updateTableCellProperties':{'objectId':obj,'tableRange':{'location':{'rowIndex':0,'columnIndex':0},'rowSpan':1,'columnSpan':3},'tableCellProperties':{'tableCellBackgroundFill':{'solidFill':{'color':color('F0F2F3')}}},'fields':'tableCellBackgroundFill'}})
+                requests.append({'updateTableCellProperties':{'objectId':obj,'tableRange':{'location':{'rowIndex':0,'columnIndex':0},'rowSpan':1,'columnSpan':3},'tableCellProperties':{'tableCellBackgroundFill':{'solidFill':{'color':color(palette['table']['header_fill'])}}},'fields':'tableCellBackgroundFill'}})
+                if palette['table']['body_fill'] and rows: requests.append({'updateTableCellProperties':{'objectId':obj,'tableRange':{'location':{'rowIndex':1,'columnIndex':0},'rowSpan':len(rows),'columnSpan':3},'tableCellProperties':{'tableCellBackgroundFill':{'solidFill':{'color':color(palette['table']['body_fill'])}}},'fields':'tableCellBackgroundFill'}})
                 count['tables']+=1
         lookup={e['stable_name']:card_id(e) for e in cards(page)}
         # Fit once per page and card type so peers use the same typography.
@@ -132,7 +153,8 @@ def compile_requests(geometry, theme, layout_id=None, existing=None, chunk=400, 
             if s not in palette: raise ValueError('Unknown card status: '+s)
             fill,border,dash=palette[s]; box=e['box']
             if contingent(e) and s == 'filled':
-                fill,border,_=palette['other']; dash='LONG_DASH_DOT'
+                fill,border,dash=palette['contingent']
+            if by_function and s == 'filled': fill,border=by_function[e.get('data',{}).get('function','')]
             name_size,size=sizes['summary' if e.get('type') == 'group_summary_card' else 'person']
             shape(pid,lookup[e['stable_name']],box,card_text(e),fill,border,dash,size,palette['muted'],True,name_size=name_size)
             count['cards']+=1
@@ -143,7 +165,7 @@ def compile_requests(geometry, theme, layout_id=None, existing=None, chunk=400, 
             lid=reserve(line_id(line)); seg=line['segments']; x1,y1=seg[0]['x1'],seg[0]['y1']; x2,y2=seg[-1]['x2'],seg[-1]['y2']
             ep={'pageObjectId':pid,'size':{'width':{'magnitude':_r(max(abs(x2-x1)*72,0.01)),'unit':'PT'},'height':{'magnitude':_r(max(abs(y2-y1)*72,0.01)),'unit':'PT'}},'transform':{'scaleX':-1 if x2<x1 else 1,'scaleY':-1 if y2<y1 else 1,'translateX':_r(x1*72),'translateY':_r(y1*72),'unit':'PT'}}
             requests.append({'createLine':{'objectId':lid,'lineCategory':line.get('native_category','BENT') if connector_category == 'auto' else connector_category,'elementProperties':ep}})
-            lp={'startConnection':{'connectedObjectId':lookup[line['from']],'connectionSiteIndex':line['google_slides_from_site_index']},'endConnection':{'connectedObjectId':lookup[line['to']],'connectionSiteIndex':line['google_slides_to_site_index']},'lineFill':{'solidFill':{'color':color(palette['matrix'] if line.get('type') == 'matrix_relationship' else (palette['ink'] if theme == 'collibra-2026' else palette['muted']))}}}
+            lp={'startConnection':{'connectedObjectId':lookup[line['from']],'connectionSiteIndex':line['google_slides_from_site_index']},'endConnection':{'connectedObjectId':lookup[line['to']],'connectionSiteIndex':line['google_slides_to_site_index']},'lineFill':{'solidFill':{'color':color(palette['matrix'] if line.get('type') == 'matrix_relationship' else palette['line'])}}}
             if line.get('line_style')=='dotted' or line.get('type')=='dotted_line': lp['dashStyle']='DOT'
             requests.append({'updateLineProperties':{'objectId':lid,'lineProperties':lp,'fields':','.join(lp)}})
             connector_ids.append(lid); count['connectors']+=1
@@ -160,10 +182,10 @@ def compile_requests(geometry, theme, layout_id=None, existing=None, chunk=400, 
         step=min(1.75, (9.75-0.42)/max(len(legend), 1))
         for i,s in enumerate(legend):
             if s == 'contingent':
-                fill,border,_=palette['other']; dash='LONG_DASH_DOT'
+                fill,border,dash=palette['contingent']
             else:
                 fill,border,dash=palette[s]
-            shape(pid,ident(page['id']+'-legend-'+s),{'x':0.42+i*step,'y':7.02,'w':step-0.10,'h':0.27},s.title(),fill,border,dash,9,palette['muted'] if s=='context' else None,shape_type='ROUND_RECTANGLE')
+            shape(pid,ident(page['id']+'-legend-'+s),{'x':0.42+i*step,'y':7.02,'w':step-0.10,'h':0.27},s.title(),fill,border,dash,9,palette['muted'] if s=='context' else None)
             # Keep the existing status/relationship count compatible for callers.
             count['contingent_legend_items' if s == 'contingent' else 'legend_items']+=1
     for slide in (existing or {}).get('slides',[]):
@@ -209,7 +231,7 @@ def verify(geometry, readback):
         for card in cards(page):
             obj=card_id(card); shape=elements.get(obj,{}).get('shape',{}); texts=shape.get('text',{}).get('textElements',[])
             actual=''.join(t.get('textRun',{}).get('content','') for t in texts)
-            results.append(('card',obj,shape.get('shapeType')=='ROUND_RECTANGLE' and actual.startswith(card_text(card).split('\n')[0])))
+            results.append(('card',obj,shape.get('shapeType') in ('ROUND_RECTANGLE','RECTANGLE') and actual.startswith(card_text(card).split('\n')[0])))
         for table in (e for e in page.get('elements', []) if e.get('type') == 'relationship_table'):
             obj=ident(table['stable_name']); actual=elements.get(obj,{}).get('table')
             ok=actual is not None and actual.get('rows', 0) == len(table.get('data',{}).get('rows',[]))+1 and actual.get('columns', 0) == 3
@@ -256,19 +278,40 @@ def write_pages(directory, result, pretty=False):
     }, pretty)
     return len(files)
 
+def build_theme(a):
+    """Resolve --theme/--theme-file/--accent/--color-by-function/--footer into one theme."""
+    overlay=templates.load_theme_file(a.theme_file) if a.theme_file else None
+    base=a.theme or (overlay.get('extends') if isinstance(overlay,dict) else None) or ('neutral' if a.theme_file else None)
+    if not base: raise templates.ThemeError('Choose a look: pass --theme NAME (run the themes command to see them) or --theme-file my-theme.json.')
+    theme=templates.resolve_theme(base,overlay,a.accent,a.color_by_function,a.footer)
+    if a.theme_file or a.accent or a.color_by_function is not None or a.footer:
+        for note in templates.theme_warnings(theme): print('Warning: '+note,file=sys.stderr)
+    return theme
+
+def list_themes(preview=None):
+    themes=THEMES
+    if preview and preview!='all' and preview not in themes: raise templates.ThemeError(f"Unknown theme '{preview}'. Available themes: {', '.join(themes)}.")
+    for name,raw in themes.items():
+        if preview=='all' or preview==name: print(templates.preview_text(templates.resolve_theme(name))+'\n')
+        elif not preview: print(f'{name:<16} {raw["description"]}')
+    return 0
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__,formatter_class=argparse.RawDescriptionHelpFormatter); sub=parser.add_subparsers(dest='command',required=True)
-    c=sub.add_parser('compile',help='Compile geometry JSON into ordered Slides request chunks'); c.add_argument('geometry'); c.add_argument('--theme',required=True,choices=THEMES); c.add_argument('--layout-id'); c.add_argument('--existing-slides',help='read_presentation JSON with slides[].objectId'); c.add_argument('--connector-category',choices=('auto','BENT','STRAIGHT'),default='auto'); c.add_argument('--chunk',type=int,default=400); c.add_argument('--output'); c.add_argument('--split-dir'); c.add_argument('--pretty',action='store_true',help='Write indented JSON')
+    c=sub.add_parser('compile',help='Compile geometry JSON into ordered Slides request chunks'); c.add_argument('geometry'); c.add_argument('--theme',help='built-in theme name (run the themes command to list them); with --theme-file this is the base the file is merged over');c.add_argument('--theme-file',help='JSON file with your own theme settings, merged over --theme (default: its "extends" value, else neutral)');c.add_argument('--accent',metavar='#RRGGBB',help='replace the theme accent colour');c.add_argument('--color-by-function',dest='color_by_function',action=argparse.BooleanOptionalAction,default=None,help='colour filled cards by function (--no-color-by-function turns a theme default off)');c.add_argument('--footer',help='one line of footer text for every page'); c.add_argument('--layout-id'); c.add_argument('--existing-slides',help='read_presentation JSON with slides[].objectId'); c.add_argument('--connector-category',choices=('auto','BENT','STRAIGHT'),default='auto'); c.add_argument('--chunk',type=int,default=400); c.add_argument('--output'); c.add_argument('--split-dir'); c.add_argument('--pretty',action='store_true',help='Write indented JSON')
     v=sub.add_parser('verify',help='Check expected IDs, shape text and attached line endpoints in read_presentation JSON'); v.add_argument('geometry'); v.add_argument('presentation_readback',nargs='+'); v.add_argument('--summary',action='store_true',help='Print counts and failures only')
+    t=sub.add_parser('themes',help='List built-in themes with one-line descriptions'); t.add_argument('--preview',nargs='?',const='all',metavar='NAME',help='print palettes as text for every theme, or just NAME')
     sub.add_parser('fields',help='Print the read_presentation fields mask required by verify')
     a=parser.parse_args()
     try:
         if a.command=='fields': print(FIELDS); return 0
+        if a.command=='themes': return list_themes(a.preview)
         geometry=json.loads(Path(a.geometry).read_text(encoding='utf-8'))
         if a.command=='compile':
             if not (a.output or a.split_dir): raise ValueError('compile requires --output or --split-dir')
             existing=unwrap_readback(json.loads(Path(a.existing_slides).read_text(encoding='utf-8'))) if a.existing_slides else None
-            result=compile_requests(geometry,a.theme,a.layout_id,existing,a.chunk,a.connector_category)
+            theme=build_theme(a)
+            result=compile_requests(geometry,theme,a.layout_id,existing,a.chunk,a.connector_category)
             if a.output: write_json(a.output,result,a.pretty)
             pages_files=write_pages(a.split_dir,result,a.pretty) if a.split_dir else 0
             print(json.dumps(dict(result['summary'],pages_files=pages_files),sort_keys=True)); return 0
@@ -282,6 +325,6 @@ def main():
         for typ,obj,ok in results:
             if not a.summary or not ok: print(f'{"PASS" if ok else "FAIL":7} {typ:10} {obj}')
         return 0 if all(x[2] for x in results) else 1
-    except (OSError, ValueError, KeyError, TypeError) as exc:
+    except (OSError, ValueError, KeyError, TypeError) as exc:  # ThemeError is a ValueError
         print('Error: '+str(exc),file=sys.stderr); return 1
 if __name__=='__main__': sys.exit(main())
