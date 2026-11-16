@@ -1,0 +1,8 @@
+{
+  "edits": [
+    {"op": "add", "node_id": "plan-analytics", "title": "Director of Analytics", "manager_node_id": "demo-010", "function": "Product", "status": "planned", "note": "Assumes budget approval next cycle"},
+    {"op": "move", "node_id": "demo-011", "manager_node_id": "demo-020", "note": "Moves to Customer to pair with programs"},
+    {"op": "remove", "node_id": "demo-012"},
+    {"op": "dotted_add", "node_id": "demo-011", "dotted_to_node_ids": "demo-030"}
+  ]
+}
