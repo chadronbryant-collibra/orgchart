@@ -8,7 +8,15 @@ compiler is local; it does not create or update a presentation.
    user's chosen folder or My Drive. Pass `parentId` `root` for My Drive; without
    a parent the copy lands beside the template, which can be a shared drive the
    user cannot move it out of. Use the returned presentation ID. For the
-   neutral option, create a blank presentation in that destination. Inspect the
+   neutral and other blank-canvas themes, copy the blank canvas file listed in
+   the manifest the same way (it is already 13.333 by 7.5 inches) and pass its
+   `layout_id` to compile. Never create a new blank deck through the connector:
+   it comes out 10 by 5.625 inches and the Slides connector cannot change that.
+   Dark themes go on the blank canvas only; compile refuses a dark theme on an
+   organization template because its logo would disappear. Before any
+   People data goes in, read the copy's permissions back and confirm they show
+   the owner only (no domain, group or link sharing). If they show anything
+   else, stop and tell the user; do not write to that deck. Inspect the
    page size and template safe areas before writing.
 2. Call `read_presentation` on that copy with fields `slides.objectId`. Save the
    response as `existing.json`. This lets the compiler remove sample slides only

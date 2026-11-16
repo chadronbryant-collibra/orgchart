@@ -88,6 +88,8 @@ Dark themes need a function palette of their own (dark fills, light outlines). `
 
 A theme sets only a solid page colour. Logos, photos and background art come from the template slide layout you build on. Pick or prepare a template whose layout already holds the logo, and the chart is drawn over it. If the theme sets a background colour it covers the layout's background, so leave that unset (as every light theme does) when you want the layout's artwork to show.
 
+Dark themes (such as `dark-mode`) go on the blank canvas. On the Collibra template the logo is dark, so a dark background would hide it; compile stops with a plain message if you try.
+
 ## Limits
 
 - The Collibra template and `collibra-2026` theme are for Collibra employees. Other people should use another theme on a blank or their own template.

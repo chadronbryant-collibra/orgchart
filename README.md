@@ -1,13 +1,12 @@
 # Org chart
 
-Need an org chart? Tell Claude who's on the team, or let it pull your own
-reporting line from Workday, and you'll get an editable Google Slides deck in a
+Need an org chart? Let Claude pull it from Workday, or tell it who's on the
+team, and you'll get an editable Google Slides deck in a
 few minutes. You always see a text preview first, so you can fix mistakes before
 anything is created.
 
-Workday through Claude covers only your own line (you, your manager, your
-direct reports). For anyone else's organization, give Claude a Sheet, a CSV or
-a pasted list.
+Claude pulls from Workday by default and sees only what your own Workday access
+allows. For anything else, give Claude a Sheet, a CSV or a pasted list.
 
 ## What you can do
 
@@ -27,16 +26,16 @@ short sections and requests you can copy.
 
 ## Who it can chart
 
-Workday through Claude covers only **your own reporting line**: you, your
-manager, your reporting chain and your direct reports. It cannot pull another
-leader's organization or a whole function. For anyone else, give Claude a Google
-Sheet, a CSV or a pasted list.
+Workday is the default, and Workday security decides what you see. With the
+Workday roster tools, Claude can chart any organization Workday lets you see,
+one or two levels deep. With only the self-service tools, it covers your own reporting line: you, your manager, your reporting chain and your direct
+reports. For anyone else, give Claude a Google Sheet, a CSV or a pasted list.
 
 ## What you need
 
 - Claude Code or Claude Desktop.
 - The Google Drive and Google Slides connectors, signed in with your work
-  Google account. Google Sheets and Workday are optional.
+  Google account. Workday is recommended; Google Sheets is optional.
 - Python 3.10 or newer if you use Claude Code (for the local preview helpers).
 
 Not sure what you have? Run `/orgchart help`. Claude explains what it can do
@@ -66,8 +65,8 @@ Full steps, updating and removing are in the repository's
 
 1. Type `/orgchart` and say what the chart is for, who will see it and the
    as-of date. Or just type `/orgchart` and pick from the menu.
-2. Share your people: your Workday line, a Google Sheet, a CSV or a pasted
-   list. Check the text preview and pick a layout.
+2. Name the organization to pull from Workday, or share a Google Sheet, a
+   CSV or a pasted list. Check the text preview and pick a layout.
 3. Open the Slides link Claude gives you and edit it like any other deck.
 
 Ask `/orgchart help` for a tour. Common questions are in the repository's
@@ -80,7 +79,7 @@ Type `/orgchart templates` to see your options.
 - Collibra template: for Collibra employees, copied from the shared drive
   folder linked in [templates](skills/orgchart/references/templates.md). You
   need access to that folder.
-- Neutral canvas: for everyone, a clean blank presentation.
+- Blank canvas: for everyone, a blank 16:9 deck in any of the other themes, such as dark mode or high contrast.
 
 ## Privacy
 

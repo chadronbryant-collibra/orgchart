@@ -94,6 +94,17 @@ def builtin_themes(directory=None):
     order = ['collibra-2026', 'neutral']
     return {k: result[k] for k in order + sorted(set(result) - set(order)) if k in result}
 
+def dark_background(theme):
+    """True when a resolved theme paints a dark page background."""
+    bg = theme.get('background') if isinstance(theme, dict) else None
+    return bool(bg) and _luminance(bg) < 0.25
+
+def branded_layout_ids(manifest_path=None):
+    """Layout IDs of organization templates whose layouts carry a logo or artwork."""
+    path = Path(manifest_path) if manifest_path else ROOT / 'templates/manifest.json'
+    data = json.loads(path.read_text(encoding='utf-8'))
+    return {e['layout_id'] for e in data['templates'] if e.get('kind') == 'google-slides' and e.get('layout_id')}
+
 def theme_ids():
     return set(builtin_themes())
 

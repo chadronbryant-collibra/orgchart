@@ -60,7 +60,8 @@ def contingent(card):
 
 def card_text(card):
     d=card.get('data',{}); s=status(card)
-    name = 'Open role' if s == 'open' else 'Planned' if s == 'planned' else d.get('name','')
+    # Summary tiles (the at-a-glance counts) keep their own text, e.g. "1\nPlanned".
+    name = d.get('name','') if card.get('type') == 'group_summary_card' else 'Open role' if s == 'open' else 'Planned' if s == 'planned' else d.get('name','')
     if s == 'context': name += ' (context)'
     text = name + '\n' + d.get('title','')
     if card.get('type') == 'group_summary_card' and d.get('lead'):
@@ -213,6 +214,7 @@ def unwrap_readback(value):
             return unwrap(item, depth+1)
         if isinstance(item, dict):
             if isinstance(item.get('slides'), list): return {'slides': item['slides']}
+            if 'objectId' in item and isinstance(item.get('pageElements'), list): return {'slides': [item]}  # one read_slide_page response
             if 'content' in item: return unwrap(item['content'], depth+1)
         if isinstance(item, list) and item and all(
                 isinstance(block, dict) and block.get('type') == 'text'
@@ -348,6 +350,8 @@ def main():
             if not (a.output or a.split_dir): raise ValueError('compile requires --output or --split-dir')
             existing=unwrap_readback(json.loads(Path(a.existing_slides).read_text(encoding='utf-8'))) if a.existing_slides else None
             theme=build_theme(a)
+            if a.layout_id and a.layout_id in templates.branded_layout_ids() and templates.dark_background(theme):
+                raise templates.ThemeError('A dark theme would hide the logo on this organization template, because the logo is dark. Use the blank canvas for dark themes (templates.py list shows its file and layout), or pick a light theme for this template.')
             result=compile_requests(geometry,theme,a.layout_id,existing,a.chunk,a.connector_category)
             if a.output: write_json(a.output,result,a.pretty)
             pages_files=write_pages(a.split_dir,result,a.pretty) if a.split_dir else 0

@@ -6,7 +6,7 @@ roster starters. Browse the [template folder](https://drive.google.com/drive/fol
 if you have access. Confirm that the selected Slides template is available to
 the user and inspect its safe areas before copying. The Collibra template is
 for Collibra employees; its upstream brand master is maintained separately.
-The neutral option starts with a blank presentation.
+The neutral and other blank-canvas themes copy a blank 16:9 file (13.333 by 7.5 inches) listed in the manifest; never create a blank deck through the connector, because it comes out at a smaller size.
 
 To add a template, add a unique ID, name, kind and supported layouts to
 `templates/manifest.json`. For a Slides template include its file ID, home,

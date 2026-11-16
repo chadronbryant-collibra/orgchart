@@ -1,33 +1,61 @@
 # Changelog
 
-## Unreleased
+## 1.3.0
 
+### Added
+
+- Workday is the default source. Where the Workday roster tools are connected,
+  Claude finds an organization by name, says how many Workday calls the pull
+  will take, pages through it and builds the roster with
+  `scripts/workday_roster.py`, reporting complete or partial and what is
+  missing. It sees only what your own Workday security allows. Your own
+  reporting line, Sheets, CSVs and pasted lists still work, and BigQuery is
+  offered only to people who already hold People data access.
+- Roster checks: each saved page is compared with its own row counts and
+  `rows_digest`; a damaged page stops the build, a page without a digest gets
+  a warning, and a head row added with `--add-head` is flagged as not read from
+  Workday.
 - Edit flow: add, change, move or remove positions, proposed roles and dotted
   lines in plain words, with a current-vs-planned diff.
-- At-a-glance summary page (`--at-a-glance`) and a fix for text overflowing
-  cards on team pages.
-- Data-driven themes: dark mode, high contrast, soft pastel, corporate blue,
-  colour by function, black and white print, and your own brand colours.
-- Added a user manual (shipped inside the skill, so plugin and Desktop installs
-  get it), a "what would you like to do" menu for bare `/orgchart`, and guidance
-  for edits, proposed roles, dotted lines, current vs planned, the at-a-glance
-  page and themes in the skill and help.
-- Help, the first lines users see and the README now say that Workday covers
-  only your own reporting line.
-- README install steps are labeled by audience, and the plugin README stands
-  alone (no links to files outside the plugin).
-- Upload safety: `slides_requests.py pagecheck` compares a readback with each
-  page file, and `manifest.json` lists the expected element count per page. The
-  writer recipe says to check each page and to send cleanup last, only after the
-  check passes.
-- Help and "what can you do" now explain layouts, statuses, scenarios and
-  privacy limits from a new plain-language overview.
-- The skill description also triggers on open or planned roles and current vs
-  planned views, and excludes single-person lookups.
-- Fixed stale size limits in the statuses reference and FAQ (1,000 people, 120
-  pages) and a wrong script path in the layouts reference.
-- Template copies go to My Drive (`parentId` `root`) instead of landing in the
-  template's shared drive.
+- Themes: dark mode, high contrast, soft pastel, corporate blue, colour by
+  function, black and white print, and your own brand colours. Blank-canvas
+  themes copy a blank 16:9 file from the template folder.
+- Optional at-a-glance summary page (`--at-a-glance`).
+- A user manual inside the skill, a "what would you like to do" menu for a bare
+  `/orgchart`, and a plain-language help overview.
+- Upload safety: `slides_requests.py pagecheck` checks each uploaded page
+  against its page file before the template slides are removed.
+
+### Changed
+
+- Scope: from "your own line only" to "whatever your own Workday access
+  allows". Claude never retries with other IDs or another system after Workday
+  refuses.
+- Deck copies go to My Drive, and Claude confirms the copy is shared with you
+  only before writing any People data.
+- Dark themes are refused on the Collibra template, whose logo is dark; use them
+  on the blank canvas.
+- Leadership team is skipped above 6 top-level people, with a warning that
+  recommends Simple tree.
+- Working files: any folder works; Workday roster files hold People rows, so
+  keep them outside any repository and delete them when done.
+- The skill description triggers on edits, dotted lines, open or planned roles
+  and looks, and excludes single-person lookups. README install steps are
+  labelled by audience.
+
+### Fixed
+
+- Blank decks no longer come out at the wrong page size.
+- A head card repeated across team pages now always points forward to the
+  page where the team continues.
+- Card height grows to fit four lines of text on every layout, and team-page
+  text no longer spills out of cards.
+- At-a-glance Open roles and Planned tiles show their counts.
+- `pagecheck` and `verify` accept a single-page readback.
+- An unfinished Workday pull is reported as unfinished rather than as a
+  damaged page, and rows from a failed page are never merged.
+- Stale size limits (1,000 people, 120 pages) and a wrong script path in the
+  references.
 
 ## 1.2.0
 

@@ -292,6 +292,14 @@ def _depths(by_id: dict[str, dict[str, Any]]) -> dict[str, int]:
     return result
 
 
+LEADERSHIP_MAX_ROOTS = 6  # more roots than this overflow the first band of Leadership team
+
+
+def _leadership_root_warning(roots: int) -> str:
+    return (f"Leadership team puts all {roots} top-level people in one band, which makes cards narrow and text "
+            f"very small above {LEADERSHIP_MAX_ROOTS}; use Simple tree (compact_hierarchy) instead")
+
+
 def recommend(data: dict[str, Any]) -> dict[str, Any]:
     by_id = _validate_input(data)
     people = _ordered_people(by_id)
@@ -310,7 +318,7 @@ def recommend(data: dict[str, Any]) -> dict[str, Any]:
     elif len(roots) == 1 and direct_reports > 8:
         preferred = "compact_hierarchy"
         rationale = "A wide team stays clearest as a simple tree; extra branches continue on their own pages with reporting lines kept."
-    elif len(people) <= 14 and max_depth <= 1:
+    elif len(people) <= 14 and max_depth <= 1 and len(roots) <= LEADERSHIP_MAX_ROOTS:
         preferred = "leadership_bands"
         rationale = "The roster is a shallow leadership cohort."
     elif function_count >= 4 and (max_depth >= 3 or len(people) >= 12):
@@ -323,10 +331,14 @@ def recommend(data: dict[str, Any]) -> dict[str, Any]:
     scale = "Large organization: adaptive function and branch overviews preserve navigation." if len(people) > 200 else None
     if scale:
         rationale += " Scale: " + scale
+    warnings = ([f"Leadership team is skipped: {len(roots)} top-level people make its cards too small "
+                 f"above {LEADERSHIP_MAX_ROOTS}. Use the recommended layout or Simple tree."]
+                if len(roots) > LEADERSHIP_MAX_ROOTS else [])
     return {
         "version": VERSION,
         "recommended_mode": preferred,
         "rationale": rationale,
+        **({"warnings": warnings} if warnings else {}),
         "facts": {
             "people": len(people),
             **({"scale": scale} if scale else {}),
@@ -631,18 +643,19 @@ def _layout_levels(data: dict[str, Any], page: dict[str, Any], people: list[dict
             level_w = min(level_w, min(b - a for a, b in zip(centers, centers[1:])) - GAP)
         level_w = min(level_w, 2 * min(min(c - content["x"], content["x"] + content["w"] - c) for c in centers))
         level_widths[level_index] = max(card_w, level_w)
-    if _is_team_page(page):
-        # Size cards from their text: grow the row height (tightening the gap
-        # between rows if needed) so the longest card in the page fits.
-        needed_in = max(
-            _text_height_needed(_card(person, _rect(0, 0, level_widths[level_index], card_h), page["id"]), level_widths[level_index])
-            for level_index in levels for person in levels[level_index]
-        ) / 72
-        if needed_in > card_h:
-            vertical_gap = max(0.16, min(vertical_gap, (content["h"] - level_count * needed_in) / max(level_count - 1, 1)))
-            card_h = min(max(card_h, needed_in), (content["h"] - (level_count - 1) * vertical_gap) / level_count)
-            total_h = level_count * card_h + max(0, level_count - 1) * vertical_gap
-            top = content["y"] + max(0.0, (content["h"] - total_h) / 2)
+    # Size cards from their text: grow the row height (tightening the gap
+    # between rows if needed) so the longest card in the page fits.
+    needed_in = max(
+        _text_height_needed(_card(person, _rect(0, 0, level_widths[level_index], card_h), page["id"]), level_widths[level_index])
+        for level_index in levels for person in levels[level_index]
+    ) / 72
+    if needed_in > card_h:
+        vertical_gap = max(0.16, min(vertical_gap, (content["h"] - level_count * needed_in) / max(level_count - 1, 1)))
+        card_h = min(max(card_h, needed_in), (content["h"] - (level_count - 1) * vertical_gap) / level_count)
+        if round(card_h, 2) < needed_in <= (content["h"] - (level_count - 1) * vertical_gap) / level_count:
+            card_h = math.ceil(needed_in * 100) / 100  # boxes are stored to 0.01 in; round up so the text still fits
+        total_h = level_count * card_h + max(0, level_count - 1) * vertical_gap
+        top = content["y"] + max(0.0, (content["h"] - total_h) / 2)
     for level_index in sorted(levels):
         row_elements = []
         level_w = level_widths[level_index]
@@ -667,6 +680,10 @@ def _layout_roster_grid(page: dict[str, Any], people: list[dict[str, Any]], colu
     rows = math.ceil(len(people) / columns)
     card_w = (content["w"] - GAP * (columns - 1)) / columns
     card_h = min(0.82, (content["h"] - 0.22 * (rows - 1)) / rows)
+    # Long titles wrap at the 8 pt floor: grow the cards (within the page) to hold them.
+    needed_in = max(_text_height_needed(_card(person, _rect(0, 0, card_w, card_h), page["id"]), card_w)
+                    for person in people) / 72
+    card_h = min(max(card_h, needed_in), (content["h"] - 0.22 * (rows - 1)) / rows)
     if card_w < 1.05 or card_h < 0.48:
         raise GeometryError("Roster grid exceeds readable geometry; reduce cards per drilldown.")
     row_elements: dict[int, list[dict[str, Any]]] = defaultdict(list)
@@ -1250,6 +1267,11 @@ def _finalize_navigation(pages, by_id):
     """Resolve cross-page hints only after every overview and team page exists."""
     placement = {e["node_id"]: p["index"] for p in pages for e in p["elements"]
                  if e.get("node_id") and not e.get("data", {}).get("context")}
+    copies: dict[str, int] = defaultdict(int)  # a head repeated on several team pages
+    for p in pages:
+        for e in p["elements"]:
+            if e.get("node_id") and not e.get("data", {}).get("context"):
+                copies[e["node_id"]] += 1
     children = _children(by_id)
     for page in pages:
         for card in page["elements"]:
@@ -1263,6 +1285,10 @@ def _finalize_navigation(pages, by_id):
                 continue
             destinations = [placement[p["id"]] for p in children[node]
                             if p["id"] in placement and placement[p["id"]] != page["index"]]
+            if destinations and copies[node] > 1:
+                # A repeated head: each copy points forward to the next page where
+                # the team continues; the last copy has nothing further to point to.
+                destinations = [d for d in destinations if d > page["index"]]
             if destinations:
                 target = min(destinations)
                 # Narrow cards (8 across) cannot hold the long wording at the
@@ -1271,6 +1297,9 @@ def _finalize_navigation(pages, by_id):
                     card["data"]["continuation_hint"] = wording
                     if _text_fit_problem(card) is None:
                         break
+                else:
+                    # No wording fits a long title: drop the hint rather than overflow the card.
+                    card["data"].pop("continuation_hint", None)
 
 
 def estimate_pages(data: dict[str, Any]) -> int:
@@ -1548,6 +1577,9 @@ def layout(data: dict[str, Any], mode_override: str | None = None, *, at_a_glanc
                         "parent_page": p.get("parent_page")} for p in pages],
     }
     validation = validate_layout(result, _estimate=_estimate)
+    root_count = sum(1 for person in by_id.values() if not person["manager_id"])
+    if mode == "leadership_bands" and root_count > LEADERSHIP_MAX_ROOTS:
+        validation["warnings"].append(_leadership_root_warning(root_count))
     result["validation"] = validation
     if not validation["valid"]:
         raise GeometryError("Generated invalid geometry: " + "; ".join(validation["errors"]))

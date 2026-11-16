@@ -7,15 +7,15 @@ plain; offer to go deeper on whatever the user asks about.
 neutral blank canvas). You always see a text outline first, so mistakes get
 fixed before anything is created.
 
-**Who I can chart.** Workday through me covers only your own reporting line:
-you, your manager, your reporting chain and your direct reports. I can't pull
-another leader's organization or a whole function from Workday. For that, give
-me a Google Sheet, a CSV or a pasted list.
+**Who I can chart.** I pull from Workday by default, and I see only what your
+own Workday access allows. With the Workday roster tools that can be any
+organization Workday lets you see. With only the self-service tools it is your
+own reporting line: you, your manager, your reporting chain and your direct
+reports. For anything else, give me a Google Sheet, a CSV or a pasted list.
 
 **What I need.** Who the chart is for, whether it shows today, a plan or both,
-and an as-of date. Then the people: a pasted list, a CSV, a Google Sheet, or your
-own reporting line from Workday (your manager, your direct reports and the line
-above you; not another leader's organization). Each person needs a name, title
+and an as-of date. Then the people: an organization from Workday (as far as your
+Workday access allows), a pasted list, a CSV or a Google Sheet. Each person needs a name, title
 and who they report to. Function and status are optional but help.
 
 **Layouts.** I recommend one and say what you give up.
