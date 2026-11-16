@@ -255,6 +255,28 @@ def write_json(path, value, pretty=False):
     options = {'indent': 2} if pretty else {'separators': (',', ':')}
     Path(path).write_text(json.dumps(value, ensure_ascii=False, **options)+'\n', encoding='utf-8')
 
+CREATES = ('createShape', 'createLine', 'createTable')
+
+def page_expectation(requests):
+    """Slide ID and the IDs of the elements one page file should create."""
+    slide = next((r['createSlide']['objectId'] for r in requests if 'createSlide' in r), None)
+    ids = [r[op]['objectId'] for r in requests for op in CREATES if op in r]
+    return slide, ids
+
+def check_pages(directory, readback):
+    """Compare each page file in a split directory with a readback. Returns (filename, slide, expected, found, missing)."""
+    directory = Path(directory)
+    manifest = json.loads((directory/'manifest.json').read_text(encoding='utf-8'))
+    slides = {s['objectId']: s for s in unwrap_readback(readback)['slides']}
+    rows = []
+    for entry in manifest['files']:
+        slide, ids = page_expectation(json.loads((directory/entry['file']).read_text(encoding='utf-8')))
+        actual = slides.get(slide)
+        have = {e['objectId'] for e in walk(actual.get('pageElements', []))} if actual else set()
+        missing = [i for i in ids if i not in have]
+        rows.append((entry['file'], slide, len(ids), len(ids)-len(missing) if actual else 0, missing if actual else ids))
+    return rows
+
 def write_pages(directory, result, pretty=False):
     """Split at createSlide boundaries; template cleanup is always sent last."""
     directory=Path(directory); directory.mkdir(parents=True, exist_ok=True)
@@ -270,11 +292,13 @@ def write_pages(directory, result, pretty=False):
     for i, requests in enumerate(pages, 1):
         filename=f'page-{i:03}.json'
         write_json(directory/filename, requests, pretty)
-        files.append({'file': filename, 'request_count': len(requests)})
+        slide, ids = page_expectation(requests)
+        files.append({'file': filename, 'request_count': len(requests), 'slide_object_id': slide,
+                      'expected_elements': len(ids), 'bytes': len(json.dumps(requests, ensure_ascii=False, separators=(',', ':')).encode('utf-8'))})
     write_json(directory/'cleanup.json', cleanup, pretty)
     write_json(directory/'manifest.json', {
         'files': files, 'cleanup': {'file': 'cleanup.json', 'request_count': len(cleanup)},
-        'cleanup_instruction': 'Send cleanup.json last, only after all pages succeed.',
+        'cleanup_instruction': 'Send cleanup.json last, only after every page passes the pagecheck command.',
     }, pretty)
     return len(files)
 
@@ -301,11 +325,24 @@ def main():
     c=sub.add_parser('compile',help='Compile geometry JSON into ordered Slides request chunks'); c.add_argument('geometry'); c.add_argument('--theme',help='built-in theme name (run the themes command to list them); with --theme-file this is the base the file is merged over');c.add_argument('--theme-file',help='JSON file with your own theme settings, merged over --theme (default: its "extends" value, else neutral)');c.add_argument('--accent',metavar='#RRGGBB',help='replace the theme accent colour');c.add_argument('--color-by-function',dest='color_by_function',action=argparse.BooleanOptionalAction,default=None,help='colour filled cards by function (--no-color-by-function turns a theme default off)');c.add_argument('--footer',help='one line of footer text for every page'); c.add_argument('--layout-id'); c.add_argument('--existing-slides',help='read_presentation JSON with slides[].objectId'); c.add_argument('--connector-category',choices=('auto','BENT','STRAIGHT'),default='auto'); c.add_argument('--chunk',type=int,default=400); c.add_argument('--output'); c.add_argument('--split-dir'); c.add_argument('--pretty',action='store_true',help='Write indented JSON')
     v=sub.add_parser('verify',help='Check expected IDs, shape text and attached line endpoints in read_presentation JSON'); v.add_argument('geometry'); v.add_argument('presentation_readback',nargs='+'); v.add_argument('--summary',action='store_true',help='Print counts and failures only')
     t=sub.add_parser('themes',help='List built-in themes with one-line descriptions'); t.add_argument('--preview',nargs='?',const='all',metavar='NAME',help='print palettes as text for every theme, or just NAME')
+    k=sub.add_parser('pagecheck',help='Check a readback against the page files in a split directory, to catch a truncated or missing page before cleanup'); k.add_argument('split_dir'); k.add_argument('presentation_readback',nargs='+'); k.add_argument('--page',help='only this page file, for example page-003.json')
     sub.add_parser('fields',help='Print the read_presentation fields mask required by verify')
     a=parser.parse_args()
     try:
         if a.command=='fields': print(FIELDS); return 0
         if a.command=='themes': return list_themes(a.preview)
+        if a.command=='pagecheck':
+            readback={'slides': [slide for filename in a.presentation_readback
+                                for slide in unwrap_readback(json.loads(Path(filename).read_text(encoding='utf-8')))['slides']]}
+            rows=[r for r in check_pages(a.split_dir,readback) if not a.page or r[0]==a.page]
+            if a.page and not rows: raise ValueError(f'No page file named {a.page} in {a.split_dir}.')
+            bad=0
+            for name,slide,expected,found,missing in rows:
+                if not missing: print(f'OK       {name}: {found} of {expected} elements')
+                else:
+                    bad+=1; print(f'MISSING  {name}: {found} of {expected} elements; '+('slide not found' if found==0 and expected and slide not in {s["objectId"] for s in readback["slides"]} else 'first missing '+', '.join(missing[:3])))
+            print('Do not send cleanup.json yet. Resend or repair the pages marked MISSING, after reading them back.' if bad else 'All pages complete. Safe to send cleanup.json.')
+            return 1 if bad else 0
         geometry=json.loads(Path(a.geometry).read_text(encoding='utf-8'))
         if a.command=='compile':
             if not (a.output or a.split_dir): raise ValueError('compile requires --output or --split-dir')

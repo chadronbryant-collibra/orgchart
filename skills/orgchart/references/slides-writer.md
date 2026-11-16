@@ -39,9 +39,27 @@ compiler is local; it does not create or update a presentation.
 5. Send `page-001.json`, `page-002.json`, and the remaining page files in
    manifest order with Slides `update_presentation`. Use the copied
    `presentationId` and each file's array as `requests`. Send one call at a time.
-   Only after every page succeeds, send `cleanup.json` to delete the template
-   slides. Send cleanup last; it must not run after a page failure. These are
-   raw Google Slides batchUpdate requests, not the entire compiler output.
+   Send each file whole, exactly as written, never retyped or shortened. These
+   are raw Google Slides batchUpdate requests, not the entire compiler output.
+
+   **Check every page before the next one.** After each page, read it back with
+   `read_slide_page` on that slide's ID (or `read_presentation` with the exact
+   fields mask from step 6), save it, and run:
+
+   ```sh
+   python3 scripts/slides_requests.py pagecheck orgchart-work/pages readback.json --page page-003.json
+   ```
+
+   It prints `OK page-003.json: 14 of 14 elements`, or `MISSING` with the count
+   found. `manifest.json` lists each page's `expected_elements`. On `MISSING`,
+   stop: read the page back, work out which elements exist, and fix only the
+   missing ones (delete the half-built slide and resend that page file if that
+   is simpler). Never send `cleanup.json` while any page is MISSING.
+
+   **Cleanup comes last.** After every page is OK, run `pagecheck` once on the
+   whole directory (omit `--page`) against a full readback. Only when it prints
+   "Safe to send cleanup.json", send `cleanup.json` to delete the template
+   slides. Deleting them is the one step that cannot be undone from the deck.
 6. Run `python3 scripts/slides_requests.py fields` and use its exact output as
    the `read_presentation` fields mask. Paste the raw connector output into
    `readback.json`; keep its `content` wrapper. Then run:
@@ -66,6 +84,11 @@ compiler is local; it does not create or update a presentation.
 9. Return the deck link and the completed checks. Repeated drilldown leaders are
    labeled context and excluded from totals. Legends show only meanings used on
    the page, with text and pattern as well as color.
+
+Time and cost: every page is sent as text through the model, roughly 10,000 to
+25,000 tokens for a normal page and more for a team page. Tell the user before
+a big build: a 10 page deck takes a few minutes, a 60 page deck takes much
+longer, and building in stages (overview first) lets them stop early.
 
 If any write has an uncertain outcome, read back the same presentation before
 any retry. Reconcile which requests took effect; never resend a chunk blindly.

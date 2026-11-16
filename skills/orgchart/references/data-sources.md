@@ -3,6 +3,8 @@
 Use only people and fields the user is allowed to see. Confirm source, scope,
 as-of date and completeness; do not guess missing managers or fill missing pages.
 
+Scope, stated up front to users: Workday through Claude covers only the
+signed-in user's own line. Never offer to pull another leader's organization.
 Workday self-scoped tools may provide your profile, manager, reporting chain and
 direct reports. Use only the signed-in user's own line, with one manager level
 per call. Check each available tool's actual scope; do not treat an identifier

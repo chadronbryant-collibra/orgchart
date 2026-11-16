@@ -19,7 +19,9 @@ This copies the skill to your personal Claude skills folder and gives you
 `/orgchart`. Running it again refreshes the files and keeps any extra files you
 added.
 
-Plugin install:
+Plugin install from GitHub (this marketplace command has not been verified
+end to end; if it fails, use the zip route under "Everyone in your
+organization"):
 
 ```
 /plugin marketplace add chadronbryant-collibra/orgchart
@@ -61,6 +63,9 @@ org when it's ready, if your organization allows that.
 
 Skills that run scripts need code execution, so check it's on for your
 organization.
+
+The user manual ships inside the skill, so every route above includes it: ask
+Claude for `/orgchart help`.
 
 ## Check it worked
 

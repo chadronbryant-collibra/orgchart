@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- Edit flow: add, change, move or remove positions, proposed roles and dotted
+  lines in plain words, with a current-vs-planned diff.
+- At-a-glance summary page (`--at-a-glance`) and a fix for text overflowing
+  cards on team pages.
+- Data-driven themes: dark mode, high contrast, soft pastel, corporate blue,
+  colour by function, black and white print, and your own brand colours.
+- Added a user manual (shipped inside the skill, so plugin and Desktop installs
+  get it), a "what would you like to do" menu for bare `/orgchart`, and guidance
+  for edits, proposed roles, dotted lines, current vs planned, the at-a-glance
+  page and themes in the skill and help.
+- Help, the first lines users see and the README now say that Workday covers
+  only your own reporting line.
+- README install steps are labeled by audience, and the plugin README stands
+  alone (no links to files outside the plugin).
+- Upload safety: `slides_requests.py pagecheck` compares a readback with each
+  page file, and `manifest.json` lists the expected element count per page. The
+  writer recipe says to check each page and to send cleanup last, only after the
+  check passes.
 - Help and "what can you do" now explain layouts, statuses, scenarios and
   privacy limits from a new plain-language overview.
 - The skill description also triggers on open or planned roles and current vs
