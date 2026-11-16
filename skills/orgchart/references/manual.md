@@ -53,10 +53,13 @@ help but are optional.
 | Pasted list or typed list | Anyone you are allowed to see. |
 | CSV file | Anyone in the file. |
 | Google Sheet | Anyone in the sheet. |
-| Workday, through Claude | **Only your own line:** you, your manager, your reporting chain and your direct reports. It cannot look up another leader's organization. |
+| Workday roster tools (default when available) | Any organization your Workday access lets you see, by name, one or two levels deep, as of today. Claude tells you how many Workday calls it will make first. |
+| Workday self-service tools | **Only your own line:** you, your manager, your reporting chain and your direct reports. |
+| BigQuery (People Solutions only) | Any organization in the People data, for people who already have that access. |
 
-For anyone else's organization, export a team or supervisory-organization
-report from Workday into a Sheet or CSV and give that to Claude.
+If Workday can't give you the organization, export a team or
+supervisory-organization report from Workday into a Sheet or CSV and give that
+to Claude.
 
 Columns to use: `node_id`, `display_name`, `title`, `manager_node_id`,
 `function`, optional `status`. A blank manager means the top of the chart.
@@ -256,7 +259,8 @@ Try this:
 | Problem | What to do |
 |---|---|
 | Claude says Drive or Slides is missing | Connect them under Connectors (see the connector setup page in this skill). If greyed out, ask IT. Claude can still give a text preview. |
-| Claude offers to pull a whole organization from Workday | It cannot. Workday covers only your own line. Give a Sheet or CSV. |
+| Workday says you can't see an organization | That's your Workday access. Claude won't work around it. Ask for a Sheet or CSV from someone who can see it. |
+| Claude says the pull is partial | Some units were too deep or a page stopped. Claude lists what's missing; add those people from a Sheet or ask for depth 2 on that unit. |
 | "I could not find X in the roster" | The name or ID is not in your roster. Fix the spelling or add the person. |
 | Removal stopped with a list of names | That person has reports. Choose move or remove them too. |
 | A manager is missing for someone | Tell Claude who they report to. It will not guess. |

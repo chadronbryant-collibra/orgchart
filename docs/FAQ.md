@@ -2,9 +2,10 @@
 
 ## Can it see my whole company?
 
-No. With Workday it sees your own profile, your manager, your reporting chain
-and your direct reports, one manager level per call. For anything wider, it
-uses only the roster you give it.
+No. It sees only what your own Workday access allows. With the Workday roster
+tools, that is the organizations Workday lets you see; with only the
+self-service tools, your own line. For anything wider, it uses only the roster
+you give it.
 
 ## Is there a manual?
 
@@ -69,8 +70,8 @@ Check that your teammates can open the template file.
 
 ## Can it check a chart against Workday or my HR data?
 
-Not yet checked. It can use what Workday returns for your own line, but it
-doesn't verify a roster you paste in. Check names and titles yourself.
+It builds from what Workday returns and reports whether the pull was complete
+or partial. It doesn't verify a roster you paste in. Check names and titles yourself.
 
 ## Who do I ask for help?
 

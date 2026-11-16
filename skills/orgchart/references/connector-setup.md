@@ -4,9 +4,9 @@
 
 Look in the session for Google Drive file copy tools and Google Slides read and
 batch update tools. Say what you found in one line, for example: "Drive copy:
-present. Slides batch update: missing." Check Google Sheets reads and Workday
-(your profile, manager, reporting chain, direct reports) only if the chart
-needs them. A connector that is listed does not prove access to a specific file
+present. Slides batch update: missing." Check Workday (roster tools first,
+then the self-service profile, manager, reporting chain and direct reports
+tools) and Google Sheets reads. A connector that is listed does not prove access to a specific file
 or person.
 
 If Drive or Slides is missing, share the steps below and offer a text preview

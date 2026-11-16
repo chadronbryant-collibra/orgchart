@@ -3,12 +3,35 @@
 Use only people and fields the user is allowed to see. Confirm source, scope,
 as-of date and completeness; do not guess missing managers or fill missing pages.
 
-Scope, stated up front to users: Workday through Claude covers only the
-signed-in user's own line. Never offer to pull another leader's organization.
-Workday self-scoped tools may provide your profile, manager, reporting chain and
-direct reports. Use only the signed-in user's own line, with one manager level
-per call. Check each available tool's actual scope; do not treat an identifier
-or the connector's account access as authorization for a wider roster.
+Scope, stated up front to users: Workday is the default, and it returns only
+what the signed-in user's own Workday security allows. Claude never widens that.
+
+Choose the source in this order. Detect each by its tool names, not by the
+server or connector name, because those differ between environments.
+
+| Order | Source | Detect by | Who can reach it | Scope |
+|---|---|---|---|---|
+| 1 | Workday roster tools | `lookup_supervisory_org`, `query_roster`, `discover_roster_scopes` | Anyone the Workday MCP server is enabled for | Any supervisory organization the caller's Workday security can see, one or two levels deep, as of today |
+| 2 | Workday self-service tools | Your profile, manager, reporting chain and direct reports tools | Everyone with the Workday connector | The caller's own line, one manager level per call |
+| 3 | Google Sheet, CSV, pasted or typed list | The user provides it | Everyone | Whatever the file holds |
+| 4 | BigQuery People data | BigQuery query tools, plus the user confirming they hold People data access | People Solutions today | Any organization in the People data mart; history possible |
+
+Rules:
+- Workday roster tools: follow [Workday roster](workday-roster.md). Give the
+  call-cost advice first, page sequentially, stop on any outcome other than
+  `ok`, and run `scripts/workday_roster.py` on the saved pages. Report
+  complete or partial with its reasons; never fill gaps by guessing.
+- Self-service tools build only the caller's own line. For a wider chart
+  without roster tools, ask for a Sheet or CSV (for example a Workday team or
+  supervisory-organization report).
+- If Workday refuses a scope or returns nothing, say so and offer a Sheet or
+  CSV. Do not retry with other IDs or switch to BigQuery to get around it.
+- BigQuery is offered only to users who already have People data access; ask
+  for name, title and manager only, active workers, and the as-of date. Never
+  suggest it to someone who doesn't.
+- Other connectors (for example a directory "who is this person" lookup or an
+  Atlassian org tree) don't return reporting lines. Don't build a chart from
+  them.
 
 A Google Sheet, CSV, pasted table or typed list can supply `node_id`,
 `display_name`, `title`, `manager_node_id`, `function` and `status`. Use stable

@@ -1,15 +1,17 @@
 ---
 name: orgchart
-description: "Build or update an editable Google Slides org chart from a roster, your Workday reporting line, a Google Sheet or a CSV. Use for org charts, team charts, reporting lines, adding, moving or removing positions, planned roles, open roles, dotted lines, current vs planned headcount views, reorg what-ifs, and changing how an org chart looks (dark mode, brand colours, accessible, print). Not for looking up one person's manager, and never for pay, performance or contact details."
+description: "Build or update an editable Google Slides org chart from Workday, a roster, a Google Sheet or a CSV. Use for org charts, team charts, reporting lines, adding, moving or removing positions, planned roles, open roles, dotted lines, current vs planned headcount views, reorg what-ifs, and changing how an org chart looks (dark mode, brand colours, accessible, print). Not for looking up one person's manager, and never for pay, performance or contact details."
 metadata:
-  version: "1.2.0"
+  version: "1.3.0"
 ---
 # Org chart
 
-Scope, in one line for users: Workday through Claude covers only your own line
-(you, your manager, your reporting chain, your direct reports). For anyone
-else's organization, use a Google Sheet, a CSV or a pasted list. Never offer to
-pull another leader's organization from Workday.
+Scope, in one line for users: Workday is the default source, and it shows only
+what your own Workday access allows. With the Workday roster tools that can be
+any organization Workday lets you see; with only the self-service tools it is
+your own line (you, your manager, your reporting chain, your direct reports).
+For anything else, use a Google Sheet, a CSV or a pasted list. Workday security
+decides; never try another route to get around a Workday refusal.
 
 Commands: `/orgchart` starts a chart; `/orgchart templates` lists choices;
 `/orgchart update <deck link>` updates a chart; `/orgchart help` explains the flow.
@@ -22,7 +24,7 @@ to explain this, so don't check tools first.
 For a bare `/orgchart` with no details, open with this menu, then wait:
 
 > What would you like to do?
-> 1. Build a new org chart from a list, a Sheet or a CSV
+> 1. Build a new org chart from Workday, a list, a Sheet or a CSV
 > 2. Add, move or remove positions, or add a proposed role
 > 3. Add dotted lines for second relationships
 > 4. Compare current vs planned
@@ -30,27 +32,34 @@ For a bare `/orgchart` with no details, open with this menu, then wait:
 > 6. Update a deck I already have (paste the link)
 > 7. See what is possible (help)
 >
-> Workday through me covers only your own reporting line. For any other
-> organization, give me a Sheet, a CSV or a pasted list.
+> I pull from Workday by default and see only what your Workday access allows.
+> You can also give me a Sheet, a CSV or a pasted list.
 
 If the user names a task, skip the menu.
 
-1. Check which Google Drive and Google Slides tools are available, plus optional
-   Workday and Google Sheets tools, and say what is present or missing in one
+1. Check which Google Drive and Google Slides tools are available, plus Workday
+   (roster tools or self-service tools) and Google Sheets tools, and say what is present or missing in one
    line. Confirm the signed-in account and access. If Drive or Slides is
    missing, walk the user through [connector setup](references/connector-setup.md)
    and offer a text preview meanwhile.
 2. Ask for purpose (current, planned or mixed), audience and as-of date. Keep
    proposed positions distinct from current facts.
-3. Get people from a permitted source, and say up front what each can reach.
-   Self-service Workday tools cover only the signed-in user's own line: their
-   profile, manager, reporting chain and direct reports, one manager level per
-   call. They cannot build another leader's organization or a whole function.
-   For anything wider, ask for a Google Sheet or CSV export (for example a
-   Workday team or supervisory-organization report) with node_id, display_name,
-   title, manager_node_id and function columns. Do not infer wider access or
-   fall back to another system without the user's say-so. See
-   [data sources](references/data-sources.md) and [privacy](references/privacy.md).
+3. Get people, Workday first, and say up front what the source can reach.
+   Follow the order in [data sources](references/data-sources.md):
+   - Workday roster tools (`lookup_supervisory_org`, `query_roster`,
+     `discover_roster_scopes`), if present: find the organization by name, give
+     the call-cost advice, page through sequentially, save each page, then run
+     `python3 scripts/workday_roster.py` and report complete or partial. See
+     [Workday roster](references/workday-roster.md).
+   - Workday self-service tools only: the signed-in user's own line, one
+     manager level per call.
+   - A Google Sheet, CSV or pasted list with node_id, display_name, title,
+     manager_node_id and function columns, for anything Workday can't give.
+   - BigQuery, only when its tools are present and the user says they hold
+     People data access there.
+   Pick by tool name, never by server name. Do not switch sources without the
+   user's say-so, and never try another route after Workday refuses. See
+   [privacy](references/privacy.md).
    Large organizations: one deck holds up to 1,000 people and 120 pages. Big
    functions get their own overview of sub-leaders, then team pages per
    sub-leader. If a roster is larger, run

@@ -1,6 +1,25 @@
 # Changelog
 
-## Unreleased
+## 1.3.0
+
+### Added
+
+- Workday is the default source. When the Workday roster tools are available,
+  Claude finds an organization by name, says how many Workday calls a pull will
+  take, pages through it, and builds the roster with the new
+  `scripts/workday_roster.py`, reporting complete or partial with reasons. It
+  sees only what the user's own Workday security allows. Self-service Workday
+  (your own line), Sheets, CSVs and pasted lists still work, and BigQuery is
+  available to people who already hold People data access. See
+  `references/data-sources.md` and `references/workday-roster.md`.
+
+### Changed
+
+- The scope rule changed from "your own line only" to "whatever your Workday
+  access allows". Claude never retries with other IDs or another system after
+  Workday refuses.
+
+### Also in this release
 
 - Edit flow: add, change, move or remove positions, proposed roles and dotted
   lines in plain words, with a current-vs-planned diff.
@@ -12,8 +31,7 @@
   get it), a "what would you like to do" menu for bare `/orgchart`, and guidance
   for edits, proposed roles, dotted lines, current vs planned, the at-a-glance
   page and themes in the skill and help.
-- Help, the first lines users see and the README now say that Workday covers
-  only your own reporting line.
+- Help, the first lines users see and the README state the Workday scope.
 - README install steps are labeled by audience, and the plugin README stands
   alone (no links to files outside the plugin).
 - Upload safety: `slides_requests.py pagecheck` compares a readback with each
