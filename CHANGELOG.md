@@ -21,6 +21,11 @@
 
 ### Fixed
 
+- Blank-canvas themes (neutral, dark mode and the other five) now copy a blank
+  16:9 file from the template folder instead of creating a blank deck, which
+  came out at the wrong page size.
+- Dark themes are refused on the Collibra template, where they hid the dark
+  logo. Use them on the blank canvas.
 - The "Team continues on page N" label on a head card repeated across team
   pages could name the wrong page (one slide said page 3, the others page 2).
   Each copy now points forward to the next page where the team continues.
