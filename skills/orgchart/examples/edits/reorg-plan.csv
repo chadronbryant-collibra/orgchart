@@ -1,0 +1,6 @@
+op,node_id,display_name,title,manager_node_id,function,status,note,dotted_to_node_ids,reports,reassign_to_node_id
+add,plan-analytics,,Director of Analytics,demo-010,Product,planned,Assumes budget approval next cycle,,,
+move,demo-011,,,demo-020,,,Moves to Customer to pair with programs,,,
+modify,demo-021,,Senior Director Customer Programs,,,,Title change proposed,,,
+remove,demo-012,,,,,,,,,
+dotted_add,demo-011,,,,,,,demo-030,,
