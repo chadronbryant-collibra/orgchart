@@ -1,0 +1,67 @@
+{
+  "id": "print-mono",
+  "description": "Black, white and greys only, with patterns carrying the meaning. Prints cleanly on any black-and-white printer.",
+  "accent": "000000",
+  "colors": {
+    "ink": "000000",
+    "muted": "262626",
+    "line": "000000",
+    "matrix_line": "@accent",
+    "surface": "FFFFFF"
+  },
+  "background": null,
+  "statuses": {
+    "filled": {
+      "fill": "FFFFFF",
+      "outline": "000000",
+      "dash": "SOLID"
+    },
+    "open": {
+      "fill": "FFFFFF",
+      "outline": "000000",
+      "dash": "DASH"
+    },
+    "planned": {
+      "fill": "EDEDED",
+      "outline": "000000",
+      "dash": "DOT"
+    },
+    "resigned": {
+      "fill": "F7F7F7",
+      "outline": "000000",
+      "dash": "DASH_DOT"
+    },
+    "other": {
+      "fill": "D9D9D9",
+      "outline": "000000",
+      "dash": "SOLID"
+    },
+    "context": {
+      "fill": "F2F2F2",
+      "outline": "595959",
+      "dash": "SOLID"
+    },
+    "contingent": {
+      "fill": "D9D9D9",
+      "outline": "000000",
+      "dash": "LONG_DASH_DOT"
+    }
+  },
+  "font": "Arial",
+  "title": {
+    "size": 18,
+    "color": "@ink",
+    "align": "START",
+    "bold": true
+  },
+  "card_corners": "square",
+  "table": {
+    "header_fill": "D9D9D9",
+    "body_fill": null
+  },
+  "footer": null,
+  "color_by_function": {
+    "enabled": false,
+    "palette": null
+  }
+}

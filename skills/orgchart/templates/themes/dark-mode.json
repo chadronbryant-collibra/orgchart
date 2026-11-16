@@ -1,0 +1,100 @@
+{
+  "id": "dark-mode",
+  "description": "Light text on a dark navy background with a mint accent. Good for screens and projectors in dim rooms.",
+  "accent": "5FD3B5",
+  "colors": {
+    "ink": "F5F7F8",
+    "muted": "C9D3D9",
+    "line": "9FB3C0",
+    "matrix_line": "@accent",
+    "surface": "0F1B26"
+  },
+  "background": "0F1B26",
+  "statuses": {
+    "filled": {
+      "fill": "1B2B3A",
+      "outline": "6F8798",
+      "dash": "SOLID"
+    },
+    "open": {
+      "fill": "0F1B26",
+      "outline": "@accent",
+      "dash": "DASH"
+    },
+    "planned": {
+      "fill": "243646",
+      "outline": "@accent",
+      "dash": "DOT"
+    },
+    "resigned": {
+      "fill": "3A1F1A",
+      "outline": "F28B6B",
+      "dash": "DASH_DOT"
+    },
+    "other": {
+      "fill": "243646",
+      "outline": "C9D3D9",
+      "dash": "SOLID"
+    },
+    "context": {
+      "fill": "243646",
+      "outline": "9FB3C0",
+      "dash": "SOLID"
+    },
+    "contingent": {
+      "fill": "243646",
+      "outline": "C9D3D9",
+      "dash": "LONG_DASH_DOT"
+    }
+  },
+  "font": "Arial",
+  "title": {
+    "size": 18,
+    "color": "@ink",
+    "align": "START",
+    "bold": true
+  },
+  "card_corners": "round",
+  "table": {
+    "header_fill": "243646",
+    "body_fill": "0F1B26"
+  },
+  "footer": null,
+  "color_by_function": {
+    "enabled": false,
+    "palette": [
+      {
+        "fill": "1F3B57",
+        "outline": "7FB3E6"
+      },
+      {
+        "fill": "2B4A2E",
+        "outline": "8FD694"
+      },
+      {
+        "fill": "4A2F57",
+        "outline": "C79BE0"
+      },
+      {
+        "fill": "57402A",
+        "outline": "E6B87F"
+      },
+      {
+        "fill": "1F4A4A",
+        "outline": "7FD6D6"
+      },
+      {
+        "fill": "57303A",
+        "outline": "E69BB0"
+      },
+      {
+        "fill": "4A4A1F",
+        "outline": "D6D67F"
+      },
+      {
+        "fill": "3A3A57",
+        "outline": "9B9BE0"
+      }
+    ]
+  }
+}

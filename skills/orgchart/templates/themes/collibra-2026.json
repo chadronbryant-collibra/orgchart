@@ -1,0 +1,67 @@
+{
+  "id": "collibra-2026",
+  "description": "Collibra brand colours: navy text, teal accents. Built for the Collibra template (Collibra employees).",
+  "accent": "03755F",
+  "colors": {
+    "ink": "002B40",
+    "muted": "4B4B4B",
+    "line": "002B40",
+    "matrix_line": "@accent",
+    "surface": "FFFFFF"
+  },
+  "background": null,
+  "statuses": {
+    "filled": {
+      "fill": "FFFFFF",
+      "outline": "DFE6E8",
+      "dash": "SOLID"
+    },
+    "open": {
+      "fill": "FFFFFF",
+      "outline": "@accent",
+      "dash": "DASH"
+    },
+    "planned": {
+      "fill": "F0F2F3",
+      "outline": "@accent",
+      "dash": "DOT"
+    },
+    "resigned": {
+      "fill": "FCE6DF",
+      "outline": "B64B31",
+      "dash": "SOLID"
+    },
+    "other": {
+      "fill": "F0F2F3",
+      "outline": "4B4B4B",
+      "dash": "SOLID"
+    },
+    "context": {
+      "fill": "F0F2F3",
+      "outline": "4B4B4B",
+      "dash": "SOLID"
+    },
+    "contingent": {
+      "fill": "F0F2F3",
+      "outline": "4B4B4B",
+      "dash": "LONG_DASH_DOT"
+    }
+  },
+  "font": "Arial",
+  "title": {
+    "size": 18,
+    "color": "@ink",
+    "align": "START",
+    "bold": true
+  },
+  "card_corners": "round",
+  "table": {
+    "header_fill": "F0F2F3",
+    "body_fill": null
+  },
+  "footer": null,
+  "color_by_function": {
+    "enabled": false,
+    "palette": null
+  }
+}

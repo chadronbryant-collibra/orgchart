@@ -1,0 +1,100 @@
+{
+  "id": "function-colors",
+  "description": "Each function gets its own bold colour, so teams stand out at a glance. Works best with the functional layout.",
+  "accent": "1F4E9C",
+  "colors": {
+    "ink": "1A1A1A",
+    "muted": "333333",
+    "line": "333333",
+    "matrix_line": "@accent",
+    "surface": "FFFFFF"
+  },
+  "background": null,
+  "statuses": {
+    "filled": {
+      "fill": "FFFFFF",
+      "outline": "333333",
+      "dash": "SOLID"
+    },
+    "open": {
+      "fill": "FFFFFF",
+      "outline": "@accent",
+      "dash": "DASH"
+    },
+    "planned": {
+      "fill": "F2F2F2",
+      "outline": "@accent",
+      "dash": "DOT"
+    },
+    "resigned": {
+      "fill": "FFE3E0",
+      "outline": "B3261E",
+      "dash": "DASH_DOT"
+    },
+    "other": {
+      "fill": "EDEDED",
+      "outline": "595959",
+      "dash": "SOLID"
+    },
+    "context": {
+      "fill": "EDEDED",
+      "outline": "595959",
+      "dash": "SOLID"
+    },
+    "contingent": {
+      "fill": "EDEDED",
+      "outline": "595959",
+      "dash": "LONG_DASH_DOT"
+    }
+  },
+  "font": "Arial",
+  "title": {
+    "size": 18,
+    "color": "@ink",
+    "align": "START",
+    "bold": true
+  },
+  "card_corners": "round",
+  "table": {
+    "header_fill": "F0F2F3",
+    "body_fill": null
+  },
+  "footer": null,
+  "color_by_function": {
+    "enabled": true,
+    "palette": [
+      {
+        "fill": "FFD6A5",
+        "outline": "9C4A00"
+      },
+      {
+        "fill": "CFF5C0",
+        "outline": "2E7D32"
+      },
+      {
+        "fill": "A8EEF5",
+        "outline": "00707A"
+      },
+      {
+        "fill": "B7D0FF",
+        "outline": "1F4E9C"
+      },
+      {
+        "fill": "D3CBFF",
+        "outline": "5B3FB5"
+      },
+      {
+        "fill": "FFC9F2",
+        "outline": "9C2F9C"
+      },
+      {
+        "fill": "F6F2A3",
+        "outline": "7A7000"
+      },
+      {
+        "fill": "FFB8B8",
+        "outline": "B3261E"
+      }
+    ]
+  }
+}

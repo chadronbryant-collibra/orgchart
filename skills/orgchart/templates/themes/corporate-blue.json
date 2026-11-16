@@ -1,0 +1,67 @@
+{
+  "id": "corporate-blue",
+  "description": "Calm blues with square corners. A neutral business look for any company.",
+  "accent": "1F4E9C",
+  "colors": {
+    "ink": "12263F",
+    "muted": "3D4F66",
+    "line": "1F4E9C",
+    "matrix_line": "@accent",
+    "surface": "FFFFFF"
+  },
+  "background": null,
+  "statuses": {
+    "filled": {
+      "fill": "FFFFFF",
+      "outline": "9DB4D6",
+      "dash": "SOLID"
+    },
+    "open": {
+      "fill": "FFFFFF",
+      "outline": "@accent",
+      "dash": "DASH"
+    },
+    "planned": {
+      "fill": "EAF1FB",
+      "outline": "@accent",
+      "dash": "DOT"
+    },
+    "resigned": {
+      "fill": "FDECEA",
+      "outline": "B3261E",
+      "dash": "DASH_DOT"
+    },
+    "other": {
+      "fill": "EEF2F7",
+      "outline": "5C6F89",
+      "dash": "SOLID"
+    },
+    "context": {
+      "fill": "EEF2F7",
+      "outline": "5C6F89",
+      "dash": "SOLID"
+    },
+    "contingent": {
+      "fill": "EEF2F7",
+      "outline": "5C6F89",
+      "dash": "LONG_DASH_DOT"
+    }
+  },
+  "font": "Arial",
+  "title": {
+    "size": 18,
+    "color": "@ink",
+    "align": "START",
+    "bold": true
+  },
+  "card_corners": "square",
+  "table": {
+    "header_fill": "EAF1FB",
+    "body_fill": null
+  },
+  "footer": null,
+  "color_by_function": {
+    "enabled": false,
+    "palette": null
+  }
+}

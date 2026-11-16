@@ -1,0 +1,100 @@
+{
+  "id": "soft-pastel",
+  "description": "Gentle lilac, peach and mint on white. Friendly for all-hands and culture slides.",
+  "accent": "6C5BA8",
+  "colors": {
+    "ink": "2B2B3A",
+    "muted": "4A4A5C",
+    "line": "6C5BA8",
+    "matrix_line": "@accent",
+    "surface": "FFFFFF"
+  },
+  "background": null,
+  "statuses": {
+    "filled": {
+      "fill": "F3EEFB",
+      "outline": "7C6BB0",
+      "dash": "SOLID"
+    },
+    "open": {
+      "fill": "FFFFFF",
+      "outline": "@accent",
+      "dash": "DASH"
+    },
+    "planned": {
+      "fill": "E8F5EE",
+      "outline": "2E7D5B",
+      "dash": "DOT"
+    },
+    "resigned": {
+      "fill": "FDE9E2",
+      "outline": "B5543A",
+      "dash": "DASH_DOT"
+    },
+    "other": {
+      "fill": "EEEEF4",
+      "outline": "6B6B80",
+      "dash": "SOLID"
+    },
+    "context": {
+      "fill": "EEEEF4",
+      "outline": "6B6B80",
+      "dash": "SOLID"
+    },
+    "contingent": {
+      "fill": "EEEEF4",
+      "outline": "6B6B80",
+      "dash": "LONG_DASH_DOT"
+    }
+  },
+  "font": "Arial",
+  "title": {
+    "size": 18,
+    "color": "@ink",
+    "align": "START",
+    "bold": true
+  },
+  "card_corners": "round",
+  "table": {
+    "header_fill": "F3EEFB",
+    "body_fill": null
+  },
+  "footer": null,
+  "color_by_function": {
+    "enabled": false,
+    "palette": [
+      {
+        "fill": "E7DCF7",
+        "outline": "6C5BA8"
+      },
+      {
+        "fill": "FCE3D6",
+        "outline": "B5543A"
+      },
+      {
+        "fill": "DDF3E6",
+        "outline": "2E7D5B"
+      },
+      {
+        "fill": "DCEBFA",
+        "outline": "2F6DA8"
+      },
+      {
+        "fill": "FBF0C9",
+        "outline": "8A6D00"
+      },
+      {
+        "fill": "F9DDEB",
+        "outline": "A8366F"
+      },
+      {
+        "fill": "DDF1F1",
+        "outline": "1F7A7A"
+      },
+      {
+        "fill": "E8E8F4",
+        "outline": "55558A"
+      }
+    ]
+  }
+}

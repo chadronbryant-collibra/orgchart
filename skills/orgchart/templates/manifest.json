@@ -36,6 +36,84 @@
       "theme": "neutral"
     },
     {
+      "id": "dark-mode",
+      "name": "Dark mode (blank canvas)",
+      "kind": "built-in",
+      "layouts": [
+        "compact_hierarchy",
+        "leadership_bands",
+        "functional_columns",
+        "matrix_relationships",
+        "enterprise_overview"
+      ],
+      "theme": "dark-mode"
+    },
+    {
+      "id": "high-contrast",
+      "name": "High contrast (accessible) (blank canvas)",
+      "kind": "built-in",
+      "layouts": [
+        "compact_hierarchy",
+        "leadership_bands",
+        "functional_columns",
+        "matrix_relationships",
+        "enterprise_overview"
+      ],
+      "theme": "high-contrast"
+    },
+    {
+      "id": "soft-pastel",
+      "name": "Soft pastel (blank canvas)",
+      "kind": "built-in",
+      "layouts": [
+        "compact_hierarchy",
+        "leadership_bands",
+        "functional_columns",
+        "matrix_relationships",
+        "enterprise_overview"
+      ],
+      "theme": "soft-pastel"
+    },
+    {
+      "id": "function-colors",
+      "name": "Colour by function (blank canvas)",
+      "kind": "built-in",
+      "layouts": [
+        "compact_hierarchy",
+        "leadership_bands",
+        "functional_columns",
+        "matrix_relationships",
+        "enterprise_overview"
+      ],
+      "theme": "function-colors"
+    },
+    {
+      "id": "print-mono",
+      "name": "Print-friendly monochrome (blank canvas)",
+      "kind": "built-in",
+      "layouts": [
+        "compact_hierarchy",
+        "leadership_bands",
+        "functional_columns",
+        "matrix_relationships",
+        "enterprise_overview"
+      ],
+      "theme": "print-mono"
+    },
+    {
+      "id": "corporate-blue",
+      "name": "Corporate blue (blank canvas)",
+      "kind": "built-in",
+      "layouts": [
+        "compact_hierarchy",
+        "leadership_bands",
+        "functional_columns",
+        "matrix_relationships",
+        "enterprise_overview"
+      ],
+      "theme": "corporate-blue"
+    },
+    {
       "id": "simple-team",
       "name": "Simple Team",
       "kind": "roster-starter",
