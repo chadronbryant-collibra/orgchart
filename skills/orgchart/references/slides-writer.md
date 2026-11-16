@@ -5,7 +5,9 @@ account, destination, template access, and connector availability first. The
 compiler is local; it does not create or update a presentation.
 
 1. Copy the selected Google Slides template with Drive `copy_file` into the
-   user's chosen folder or My Drive. Use the returned presentation ID. For the
+   user's chosen folder or My Drive. Pass `parentId` `root` for My Drive; without
+   a parent the copy lands beside the template, which can be a shared drive the
+   user cannot move it out of. Use the returned presentation ID. For the
    neutral option, create a blank presentation in that destination. Inspect the
    page size and template safe areas before writing.
 2. Call `read_presentation` on that copy with fields `slides.objectId`. Save the
