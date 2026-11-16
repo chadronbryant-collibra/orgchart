@@ -60,7 +60,8 @@ def contingent(card):
 
 def card_text(card):
     d=card.get('data',{}); s=status(card)
-    name = 'Open role' if s == 'open' else 'Planned' if s == 'planned' else d.get('name','')
+    # Summary tiles (the at-a-glance counts) keep their own text, e.g. "1\nPlanned".
+    name = d.get('name','') if card.get('type') == 'group_summary_card' else 'Open role' if s == 'open' else 'Planned' if s == 'planned' else d.get('name','')
     if s == 'context': name += ' (context)'
     text = name + '\n' + d.get('title','')
     if card.get('type') == 'group_summary_card' and d.get('lead'):
@@ -213,6 +214,7 @@ def unwrap_readback(value):
             return unwrap(item, depth+1)
         if isinstance(item, dict):
             if isinstance(item.get('slides'), list): return {'slides': item['slides']}
+            if 'objectId' in item and isinstance(item.get('pageElements'), list): return {'slides': [item]}  # one read_slide_page response
             if 'content' in item: return unwrap(item['content'], depth+1)
         if isinstance(item, list) and item and all(
                 isinstance(block, dict) and block.get('type') == 'text'

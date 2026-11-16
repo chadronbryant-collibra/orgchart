@@ -63,7 +63,7 @@ If the user names a task, skip the menu.
    Large organizations: one deck holds up to 1,000 people and 120 pages. Big
    functions get their own overview of sub-leaders, then team pages per
    sub-leader. If a roster is larger, run
-   `python3 scripts/org_chart_geometry.py plan <roster>.json` to get a split into
+   `python3 scripts/org_chart_geometry.py plan <render>.json` (the normalizer output, not the assembled roster) to get a split into
    several decks, and agree the split with the user before building anything.
 4. Normalize locally and show the text outline, status totals, recommendation
    and page plan before any Slides call. Resolve missing or ambiguous links.

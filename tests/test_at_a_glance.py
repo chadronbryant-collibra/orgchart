@@ -48,6 +48,16 @@ class AtAGlanceTests(unittest.TestCase):
         self.assertEqual(plain, again)
         self.assertFalse(any(p['section'] == 'at-a-glance' for p in plain['pages']))
 
+    def test_open_and_planned_tiles_keep_their_counts(self):
+        glance = geometry.layout(self.payload, at_a_glance=True)['pages'][0]
+        text = {c['data']['name']: slides.card_text(c) for c in glance['elements']}
+        counts = {c['group_id']: slides.card_text(c).split('\n')[0] for c in glance['elements']
+                  if c['group_id'].startswith('glance-status-')}
+        self.assertEqual(counts['glance-status-open'], '2')
+        self.assertEqual(counts['glance-status-planned'], '1')
+        self.assertEqual(counts['glance-status-filled'], str(glance['glance']['by_status']['filled']))
+        self.assertTrue(text)
+
     def test_prepends_one_page_and_validates(self):
         plain = geometry.layout(self.payload)
         glance = geometry.layout(self.payload, at_a_glance=True)

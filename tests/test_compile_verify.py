@@ -92,6 +92,13 @@ class CompileVerifyTests(unittest.TestCase):
                 self.assertEqual(len(checks), 6)  # One slide, three cards, two lines.
                 self.assertTrue(all(ok for _, _, ok in checks))
 
+    def test_single_page_readback_is_accepted(self):
+        slide = self.raw['content']['slides'][0]
+        for payload in (slide, {'content': slide}, json.dumps({'content': slide})):
+            with self.subTest(payload=type(payload).__name__):
+                self.assertEqual(slides.unwrap_readback(payload), {'slides': [slide]})
+                self.assertTrue(all(ok for _, _, ok in slides.verify(self.geo, payload)))
+
     def test_bad_envelope_error_lists_shapes(self):
         for payload in ({}, {'content': {}}, {'slides': None}, [], 'not JSON',
                         [{'type': 'text', 'text': 'not JSON'}]):

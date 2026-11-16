@@ -8,7 +8,12 @@ compiler is local; it does not create or update a presentation.
    user's chosen folder or My Drive. Pass `parentId` `root` for My Drive; without
    a parent the copy lands beside the template, which can be a shared drive the
    user cannot move it out of. Use the returned presentation ID. For the
-   neutral option, create a blank presentation in that destination. Before any
+   neutral option, create a blank presentation in that destination, then read
+   its page size. A blank deck made through the Drive connector is 10 by 5.625
+   inches (9144000 by 5143500 EMU), not the 13.333 by 7.5 the geometry assumes,
+   and the Slides connector cannot change it. Ask the user to set
+   File > Page setup > Custom to 13.333 by 7.5 inches and share the link, or use
+   the Collibra template copy; never write to a blank deck at the smaller size. Before any
    People data goes in, read the copy's permissions back and confirm they show
    the owner only (no domain, group or link sharing). If they show anything
    else, stop and tell the user; do not write to that deck. Inspect the

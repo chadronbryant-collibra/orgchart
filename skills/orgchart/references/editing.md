@@ -20,7 +20,7 @@ python3 scripts/preview_org_chart.py diff roster.json planned.json
 
 5. Read the one-line summary back to the user in their words, for example
    "1 added (1 proposed), 1 moved, 1 removed, dotted lines 1 -> 2; headcount 7 -> 7".
-6. Build the slides from `planned.json` the usual way. Changed positions carry a
+6. Build the slides from `planned.json` the usual way, but skip the normalizer: `planned.json` is already normalized, so go straight to the `layout` command. Changed positions carry a
    status and a short annotation on the card (for example "Proposed: assumes
    budget approval"). To show current and planned together, build one deck from
    each file, or put the diff text on a notes page.
